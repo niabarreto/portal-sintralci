@@ -278,7 +278,7 @@ async function demoApi(action, data) {
       fecha_ingreso: data.fecha_ingreso || new Date().toISOString().split('T')[0],
       rol: data.rol || 'afiliado',
       activo: true,
-      password: data.password || 'Lci2025!',
+      password: data.password || 'Lci2026!',
     };
     d.users.push(nuevo);
     return { success: true };
@@ -557,9 +557,9 @@ async function viewHome() {
     api('getNoticias'),
   ]);
 
-  const misClasif  = resClasif.data   || [];
-  const misPQRS    = resPQRS.data     || [];
-  const noticias   = resNoticias.data || [];
+  const misClasif  = resClasif.clasificados  || [];
+  const misPQRS    = resPQRS.pqrs            || [];
+  const noticias   = resNoticias.noticias    || [];
 
   const clasifActivos = misClasif.filter(c => c.estado === 'aprobado').length;
   const pqrsAbiertos  = misPQRS.filter(p => p.estado !== 'resuelto').length;
@@ -768,7 +768,7 @@ async function loadClasificados() {
 
   if (_clTabActual === 'tablero') {
     const res = await api('getClasificados');
-    const list = res.data || [];
+    const list = res.clasificados || [];
     if (!list.length) {
       cont.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><p>No hay clasificados aprobados aún.</p></div>`;
       return;
@@ -776,7 +776,7 @@ async function loadClasificados() {
     cont.innerHTML = `<div style="display:flex;flex-direction:column;gap:.75rem;">${list.map(clCard).join('')}</div>`;
   } else {
     const res = await api('getMisClasificados');
-    const list = res.data || [];
+    const list = res.clasificados || [];
     if (!list.length) {
       cont.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><p>Aún no has publicado clasificados.</p><button class="btn btn-primary mt-2" onclick="openNuevoClasificado()">+ Publicar ahora</button></div>`;
       return;
@@ -811,7 +811,11 @@ function clCard(c, showStatus = false) {
   `;
 }
 
+let _ncImgBase64 = null;
+let _ncImgMime   = null;
+
 function openNuevoClasificado() {
+  _ncImgBase64 = null; _ncImgMime = null;
   openModal('Nuevo Clasificado',
     `<div class="form-group">
       <label class="form-label">Categoría <span class="req">*</span></label>
@@ -837,10 +841,44 @@ function openNuevoClasificado() {
       <label class="form-label">Descripción <span class="req">*</span></label>
       <textarea id="nc-desc" class="form-control" placeholder="Describe el artículo o servicio: estado, características, condiciones de venta…" maxlength="500"></textarea>
     </div>
+    <div class="form-group">
+      <label class="form-label">Foto (opcional)</label>
+      <div class="upload-zone" id="nc-upload-zone" onclick="$('nc-file-input').click()">
+        <input type="file" id="nc-file-input" accept="image/*" style="display:none" onchange="ncHandleFile(this)" />
+        <div id="nc-upload-preview">
+          <div class="upload-zone-icon">📷</div>
+          <p>Haz clic para subir una foto</p>
+          <small>JPG, PNG — máx. 5 MB</small>
+        </div>
+      </div>
+    </div>
     <div id="nc-err" class="form-error-msg"></div>`,
     `<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
      <button class="btn btn-primary" id="nc-btn" onclick="submitClasificado()">Publicar</button>`
   );
+}
+
+function ncHandleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    toast('La imagen supera los 5 MB. Elige una más pequeña.', 'error');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    const parts   = dataUrl.split(',');
+    _ncImgBase64  = parts[1];
+    _ncImgMime    = file.type;
+    $('nc-upload-preview').innerHTML = `
+      <img src="${dataUrl}" style="max-height:140px;border-radius:8px;object-fit:cover;width:100%;" />
+      <p style="margin-top:.5rem;font-size:.75rem;color:var(--muted);">${file.name} · ${(file.size/1024).toFixed(0)} KB
+        <span onclick="_ncImgBase64=null;_ncImgMime=null;$('nc-upload-preview').innerHTML='<div class=upload-zone-icon>📷</div><p>Haz clic para subir una foto</p>';$('nc-file-input').value='';"
+              style="color:var(--red);cursor:pointer;margin-left:.5rem;">✕ Quitar</span>
+      </p>`;
+  };
+  reader.readAsDataURL(file);
 }
 
 async function submitClasificado() {
@@ -853,9 +891,15 @@ async function submitClasificado() {
 
   if (!cat || !titulo || !desc) { err.textContent='Completa los campos obligatorios.'; err.classList.add('show'); return; }
 
-  btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span> Enviando…';
 
-  const res = await api('submitClasificado', { categoria:cat, titulo, descripcion:desc, precio });
+  const payload = { categoria:cat, titulo, descripcion:desc, precio };
+  if (_ncImgBase64) {
+    payload.imageBase64  = _ncImgBase64;
+    payload.imageMimeType = _ncImgMime;
+  }
+
+  const res = await api('submitClasificado', payload);
 
   if (res.success) {
     closeModal();
@@ -873,7 +917,7 @@ async function submitClasificado() {
 async function viewPQRS() {
   setPageTitle('PQRS');
   const res = await api('getMisPQRS');
-  const list = res.data || [];
+  const list = res.pqrs || [];
 
   const listHtml = list.length ? list.map(pq => `
     <div class="pq-card" onclick="verPQRS('${esc(pq.id)}')">
@@ -981,7 +1025,7 @@ async function submitPQRS() {
 async function viewNoticias() {
   setPageTitle('Noticias');
   const res = await api('getNoticias');
-  const list = res.data || [];
+  const list = res.noticias || [];
 
   const html = list.length ? list.map(n => `
     <div class="news-card">
@@ -1010,7 +1054,7 @@ async function viewNoticias() {
 async function viewAdminAfiliados() {
   setPageTitle('Afiliados');
   const res = await api('getAfiliados');
-  const list = res.data || [];
+  const list = res.afiliados || [];
 
   const total   = list.length;
   const activos = list.filter(u => u.activo).length;
@@ -1085,7 +1129,7 @@ function openCrearAfiliado() {
         <select id="na-rol" class="form-control"><option value="afiliado">Afiliado</option><option value="junta">Junta Directiva</option></select>
       </div>
       <div class="form-group span-2"><label class="form-label">Contraseña inicial <span class="req">*</span></label>
-        <input id="na-pwd" class="form-control" type="text" value="Lci2025!" />
+        <input id="na-pwd" class="form-control" type="text" value="Lci2026!" />
         <span class="form-hint">El afiliado deberá cambiarla al ingresar.</span>
       </div>
     </div>
@@ -1200,8 +1244,8 @@ let _adminClTab = 'pendiente';
 
 async function viewAdminClasificados() {
   setPageTitle('Gestionar Clasificados');
-  const res = await api('getAllClasificados');
-  const all = res.data || [];
+  const res = await api('getClasificados');
+  const all = res.clasificados || [];
 
   const pendientes = all.filter(c => c.estado === 'pendiente');
   const aprobados  = all.filter(c => c.estado === 'aprobado');
@@ -1299,7 +1343,7 @@ let _adminPQTab = 'abierto';
 async function viewAdminPQRS() {
   setPageTitle('Gestionar PQRS');
   const res = await api('getAllPQRS');
-  const all = res.data || [];
+  const all = res.pqrs || [];
   S._adminPQ = all;
 
   const counts = { abierto:0, en_tramite:0, resuelto:0 };
@@ -1423,7 +1467,7 @@ async function marcarResuelto(id) {
 async function viewAdminNoticias() {
   setPageTitle('Comunicados');
   const res = await api('getNoticias');
-  const list = res.data || [];
+  const list = res.noticias || [];
   S._adminNoticias = list;
 
   const html = list.length ? list.map(n => `
@@ -1481,10 +1525,7 @@ async function publicarNoticia(id) {
 
   let res;
   if (id) {
-    // For demo, we update in place
-    const n = (S._adminNoticias||[]).find(x=>x.id===id);
-    if (n) { n.titulo=titulo; n.contenido=contenido; res={success:true}; await delay(300); }
-    else res={success:false, message:'No encontrado.'};
+    res = await api('updateNoticia', { id, titulo, contenido });
   } else {
     res = await api('createNoticia', { titulo, contenido });
   }
