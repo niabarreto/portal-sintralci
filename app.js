@@ -388,7 +388,7 @@ function renderSidebar() {
   // Brand
   $('sidebar-brand').innerHTML = `
     <svg width="42" height="42" viewBox="119.83 182.51 356.04 356.04" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="297.85" cy="360.53" r="178.02" fill="rgba(255,255,255,.15)"/>
+      <circle cx="297.85" cy="360.53" r="178.02" fill="#f6f2ed"/>
       <circle cx="297.85" cy="360.53" r="142.87" fill="#e94e1b"/>
       <path fill="#fff" d="M357.04,295.13l6.31-.53,2.72,32.55-30.33,2.54-1.14-13.58s-.9-10.04,5.43-15.35c6.33-5.31,17-5.63,17-5.63Z"/>
       <path fill="#fff" d="M317.14,298.37l6.31-.53,2.72,32.55-30.33,2.54-1.14-13.58s-.9-10.04,5.43-15.35c6.33-5.31,17-5.63,17-5.63Z"/>
@@ -413,19 +413,32 @@ function renderSidebar() {
     </div>
   `;
 
+  // SVG Icons — vectores simples alineados con la estética del logo
+  const IC = {
+    home:        `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L10 3l7 6.5V18a.5.5 0 01-.5.5h-4.25V13.5h-4.5V18.5H3.5A.5.5 0 013 18V9.5z"/></svg>`,
+    perfil:      `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="3.5"/><path d="M2.5 18c0-4.1 3.4-7 7.5-7s7.5 2.9 7.5 7"/></svg>`,
+    clasificados:`<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5h2v8l-1 1-1-1v-8z"/><circle cx="10" cy="14.5" r="1.5"/><path d="M5 11.5V16a1 1 0 001 1h8a1 1 0 001-1v-4.5"/></svg>`,
+    pqrs:        `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="2.5" width="14" height="15" rx="2"/><path d="M7 7.5h6M7 11h6M7 14.5h4"/></svg>`,
+    noticias:    `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h12a1 1 0 011 1v9a1 1 0 01-1 1H4a1 1 0 01-1-1v-9a1 1 0 011-1z"/><path d="M6 8h8M6 11h5"/><path d="M14 2.5v3"/></svg>`,
+    afiliados:   `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="7" r="3"/><path d="M1.5 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M13.5 4.5c1.7 0 3 1.3 3 3s-1.3 3-3 3"/><path d="M17.5 16c0-2.5-1.5-4.3-3.5-5"/></svg>`,
+    gestionarCl: `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="15" height="15" rx="2"/><path d="M7 10l2.5 2.5 4-4"/></svg>`,
+    gestionarPQ: `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 3h13a1 1 0 011 1v9l-4.5 4.5H3.5a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M7 8h6M7 11h4"/><path d="M13 12.5V17"/></svg>`,
+    comunicados: `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14V4.5a1 1 0 011-1h10a1 1 0 011 1V14"/><path d="M2 14h16v1a2 2 0 01-2 2H4a2 2 0 01-2-2v-1z"/><path d="M8 7.5h4M8 10.5h3"/></svg>`,
+  };
+
   // Nav
   const memberNav = [
-    { id:'home',        icon:'🏠', label:'Inicio' },
-    { id:'perfil',      icon:'👤', label:'Mi Perfil' },
-    { id:'clasificados',icon:'📌', label:'Clasificados' },
-    { id:'pqrs',        icon:'📋', label:'PQRS' },
-    { id:'noticias',    icon:'📰', label:'Noticias' },
+    { id:'home',        icon: IC.home,        label:'Inicio' },
+    { id:'perfil',      icon: IC.perfil,      label:'Mi Perfil' },
+    { id:'clasificados',icon: IC.clasificados,label:'Clasificados' },
+    { id:'pqrs',        icon: IC.pqrs,        label:'PQRS' },
+    { id:'noticias',    icon: IC.noticias,    label:'Noticias' },
   ];
   const adminNav = [
-    { id:'admin-afiliados',    icon:'👥', label:'Afiliados' },
-    { id:'admin-clasificados', icon:'✅', label:'Gestionar Clasificados' },
-    { id:'admin-pqrs',         icon:'📨', label:'Gestionar PQRS' },
-    { id:'admin-noticias',     icon:'✏️', label:'Comunicados' },
+    { id:'admin-afiliados',    icon: IC.afiliados,   label:'Afiliados' },
+    { id:'admin-clasificados', icon: IC.gestionarCl, label:'Gestionar Clasificados' },
+    { id:'admin-pqrs',         icon: IC.gestionarPQ, label:'Gestionar PQRS' },
+    { id:'admin-noticias',     icon: IC.comunicados, label:'Comunicados' },
   ];
 
   let navHtml = memberNav.map(n => navItem(n)).join('');
@@ -437,15 +450,15 @@ function renderSidebar() {
 
   // Bottom nav (mobile)
   const btmItems = [
-    { id:'home',         icon:'🏠', label:'Inicio' },
-    { id:'clasificados', icon:'📌', label:'Tablero' },
-    { id:'pqrs',         icon:'📋', label:'PQRS' },
-    { id:'noticias',     icon:'📰', label:'Noticias' },
-    { id:'perfil',       icon:'👤', label:'Perfil' },
+    { id:'home',         icon: IC.home,        label:'Inicio' },
+    { id:'clasificados', icon: IC.clasificados, label:'Tablero' },
+    { id:'pqrs',         icon: IC.pqrs,        label:'PQRS' },
+    { id:'noticias',     icon: IC.noticias,    label:'Noticias' },
+    { id:'perfil',       icon: IC.perfil,      label:'Perfil' },
   ];
   $('btm-nav-inner').innerHTML = btmItems.map(n => `
     <button class="btm-item" id="btn-${n.id}" onclick="go('${n.id}')">
-      <span class="btm-icon">${n.icon}</span>
+      <span class="btm-icon" style="display:flex;align-items:center;justify-content:center;">${n.icon}</span>
       <span>${n.label}</span>
     </button>
   `).join('');
