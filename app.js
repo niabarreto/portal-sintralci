@@ -564,14 +564,9 @@ async function viewHome() {
   const clasifActivos = misClasif.filter(c => c.estado === 'aprobado').length;
   const pqrsAbiertos  = misPQRS.filter(p => p.estado !== 'resuelto').length;
 
-  const noticiasHtml = noticias.slice(0,3).map(n => `
-    <div class="news-card">
-      <div class="news-date">📅 ${fmtDate(n.fecha)}</div>
-      <div class="news-title">${esc(n.titulo)}</div>
-      <div class="news-content">${esc(n.contenido).replace(/\n/g,'<br>').substring(0,180)}${n.contenido.length > 180 ? '…' : ''}</div>
-      <div class="news-author">— ${esc(n.autor)}</div>
-    </div>
-  `).join('') || `<div class="empty"><div class="empty-icon">📭</div><p>No hay noticias aún.</p></div>`;
+  const noticiasHtml = noticias.length
+    ? noticias.slice(0,3).map(n => noticiaFlyer(n)).join('')
+    : `<div class="empty"><div class="empty-icon">📭</div><p>No hay noticias aún.</p></div>`;
 
   $('view-area').innerHTML = `
     <div class="home-banner">
@@ -773,7 +768,7 @@ async function loadClasificados() {
       cont.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><p>No hay clasificados aprobados aún.</p></div>`;
       return;
     }
-    cont.innerHTML = `<div style="display:flex;flex-direction:column;gap:.75rem;">${list.map(clCard).join('')}</div>`;
+    cont.innerHTML = `<div class="flyer-grid">${list.map(clCard).join('')}</div>`;
   } else {
     const res = await api('getMisClasificados');
     const list = res.clasificados || [];
@@ -781,100 +776,194 @@ async function loadClasificados() {
       cont.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><p>Aún no has publicado clasificados.</p><button class="btn btn-primary mt-2" onclick="openNuevoClasificado()">+ Publicar ahora</button></div>`;
       return;
     }
-    cont.innerHTML = `<div style="display:flex;flex-direction:column;gap:.75rem;">${list.map(c => clCard(c, true)).join('')}</div>`;
+    cont.innerHTML = `<div class="flyer-grid">${list.map(c => clCard(c, true)).join('')}</div>`;
   }
 }
 
-function clCard(c, showStatus = false) {
-  const statusBadge = showStatus ? `<span class="badge ${estadoBadgeClass(c.estado)}">${estadoLabel(c.estado)}</span>` : '';
-  const catIcon = { 'Venta de artículos':'🛍️', 'Servicios':'🔧', 'Se busca / Necesito':'🔍', 'Arriendos / Vivienda':'🏠', 'Donaciones / Regalos':'🎁' }[c.categoria] || '📢';
+/* ── LOGO MINI (reutilizable) ──────────────────────────── */
+function logoMini(size=22) {
+  return `<svg width="${size}" height="${size}" viewBox="155 218 286 286" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="297.85" cy="360.53" r="142.87" fill="rgba(255,255,255,.2)"/>
+    <path fill="#fff" d="M357.04,295.13l6.31-.53,2.72,32.55-30.33,2.54-1.14-13.58s-.9-10.04,5.43-15.35c6.33-5.31,17-5.63,17-5.63Z"/>
+    <path fill="#fff" d="M317.14,298.37l6.31-.53,2.72,32.55-30.33,2.54-1.14-13.58s-.9-10.04,5.43-15.35c6.33-5.31,17-5.63,17-5.63Z"/>
+    <path fill="#fff" d="M288.47,362.29l-4.92-60.16-6.31.53s-10.67.32-17,5.63c-6.33,5.31-5.43,15.35-5.43,15.35l3.24,36.3c-.05.5-.07,1-.07,1.51.03,8.33,6.81,15.06,15.14,15.04,8-.03,14.51-6.29,14.99-14.16l.36-.03Z"/>
+    <path fill="#fff" d="M371.7,384.34l-.67-8.04-.02-.21-.06-.66-3.22-38.44-72.16,6.04c-.17,1.25-.05,2.65.35,4.19,4.56,10.21,20.94,20.39,43.25,21.62l.73,8.95-1.5.08-1.53.08s-5.28-.26-6.97-.49c-4.05-.57-8.2-1.41-12.22-2.62-6.45-1.94-12.56-4.82-17.34-9.06-1.68-1.49-3.19-3.15-4.5-4.99-.29,2.19-.9,5.13-2.2,8.14-1.09,2.5-2.65,5.05-4.9,7.24-2.18,2.12-4.34,3.64-6.31,4.74-4.83,2.7-8.51,2.87-8.51,2.87l-14.04,1.33-11.64.97c-21.55,1.5-27.65-1.8-27.65-1.8l.18,2.76.84,9.09s1.39,7.75,2.26,10.66c10.22,34.27,42.63,54.01,78.21,51.12,36.38-2.96,65.97-23.85,69.33-63.65.27-3.18.35-6.49.27-9.91Z"/>
+    <path fill="#fff" d="M248.34,361.95l-3.72-45.45-6.31.53s-10.67.32-17,5.63c-6.33,5.31-5.43,15.35-5.43,15.35l2.34,26.22s.01,0,.02,0c.82,8.23,8.12,14.28,16.38,13.53,8.1-.74,14.1-7.75,13.68-15.8.01,0,.03,0,.04,0Z"/>
+  </svg>`;
+}
 
+/* ── TARJETA DE CLASIFICADO — FLYER VISUAL ─────────────── */
+function clCard(c, showStatus = false) {
+  const CAT_COLOR = {
+    'Venta de artículos':  '#e94e1b',
+    'Servicios':           '#2563eb',
+    'Se busca / Necesito': '#16a34a',
+    'Arriendos / Vivienda':'#7c3aed',
+    'Donaciones / Regalos':'#d97706',
+    'Otros avisos':        '#475569',
+  };
+  const color = CAT_COLOR[c.categoria] || '#e94e1b';
+  const statusBadge = showStatus ? `<span class="flyer-status ${estadoBadgeClass(c.estado)}">${estadoLabel(c.estado)}</span>` : '';
+
+  // ── Flyer propio del afiliado (imagen que sube él)
+  if (c.tipo_aviso === 'flyer' && c.url_imagen) {
+    return `
+      <div class="flyer-card flyer-user">
+        <img src="${esc(c.url_imagen)}" alt="${esc(c.titulo||c.categoria)}" class="flyer-user-img"
+             onerror="this.style.display='none'" />
+        <div class="flyer-user-footer">
+          <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+            <span class="flyer-cat-pill" style="background:${color}">${esc(c.categoria)}</span>
+            ${statusBadge}
+          </div>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:.3rem;">
+            👤 ${esc(c.nombre_afiliado)} · ${fmtDate(c.fecha)}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // ── Aviso generado con diseño SINTRALCI
   return `
-    <div class="cl-card">
-      <div class="cl-img">
-        ${c.url_imagen ? `<img src="${esc(c.url_imagen)}" alt="foto" onerror="this.parentElement.innerHTML='${catIcon}'" />` : catIcon}
-      </div>
-      <div class="cl-body">
-        <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;">
-          <span class="badge badge-muted">${esc(c.categoria)}</span>
+    <div class="flyer-card flyer-sintralci">
+      <div class="flyer-header" style="background:${color}">
+        <div class="flyer-header-brand">
+          ${logoMini(20)}
+          <span>SINTRALCI</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:.4rem;">
+          <span class="flyer-cat-label">${esc(c.categoria)}</span>
           ${statusBadge}
         </div>
-        <div class="cl-title">${esc(c.titulo)}</div>
-        <div class="cl-desc">${esc(c.descripcion)}</div>
-        ${c.precio ? `<div class="cl-price">${esc(c.precio)}</div>` : ''}
-        <div class="cl-meta">
+      </div>
+      ${c.url_imagen ? `
+        <div class="flyer-photo">
+          <img src="${esc(c.url_imagen)}" alt="foto" onerror="this.parentElement.style.display='none'" />
+        </div>` : ''}
+      <div class="flyer-body">
+        <div class="flyer-title">${esc(c.titulo)}</div>
+        ${c.descripcion ? `<div class="flyer-desc">${esc(c.descripcion).substring(0,200)}${c.descripcion.length>200?'…':''}</div>` : ''}
+        ${c.precio ? `<div class="flyer-price">${esc(c.precio)}</div>` : ''}
+        <div class="flyer-meta">
           <span>👤 ${esc(c.nombre_afiliado)}</span>
-          <span>📅 ${fmtDate(c.fecha)}</span>
+          <span>${fmtDate(c.fecha)}</span>
         </div>
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
 let _ncImgBase64 = null;
 let _ncImgMime   = null;
+let _ncMode      = 'sintralci';
 
 function openNuevoClasificado() {
-  _ncImgBase64 = null; _ncImgMime = null;
+  _ncImgBase64 = null; _ncImgMime = null; _ncMode = 'sintralci';
   openModal('Nuevo Clasificado',
-    `<div class="form-group">
-      <label class="form-label">Categoría <span class="req">*</span></label>
-      <select id="nc-cat" class="form-control">
-        <option value="">— Selecciona —</option>
-        <option>Venta de artículos</option>
-        <option>Servicios</option>
-        <option>Se busca / Necesito</option>
-        <option>Arriendos / Vivienda</option>
-        <option>Donaciones / Regalos</option>
-        <option>Otros avisos</option>
-      </select>
+    `<!-- Selector de modo -->
+    <div class="nc-mode-toggle">
+      <button class="nc-mode-btn active" id="ncbtn-sintralci" onclick="ncSetMode('sintralci')">
+        <span style="font-size:1.1rem;">🎨</span>
+        <strong>Aviso SINTRALCI</strong>
+        <span class="nc-mode-desc">Diseño oficial del sindicato</span>
+      </button>
+      <button class="nc-mode-btn" id="ncbtn-flyer" onclick="ncSetMode('flyer')">
+        <span style="font-size:1.1rem;">📤</span>
+        <strong>Subir mi flyer</strong>
+        <span class="nc-mode-desc">Sube tu diseño propio</span>
+      </button>
     </div>
-    <div class="form-group">
-      <label class="form-label">Título <span class="req">*</span></label>
-      <input type="text" id="nc-titulo" class="form-control" placeholder="Ej: Vendo nevera LG 200L" maxlength="80" />
-    </div>
-    <div class="form-group">
-      <label class="form-label">Precio (opcional)</label>
-      <input type="text" id="nc-precio" class="form-control" placeholder="Ej: $150.000 · Gratis · Negociable" />
-    </div>
-    <div class="form-group">
-      <label class="form-label">Descripción <span class="req">*</span></label>
-      <textarea id="nc-desc" class="form-control" placeholder="Describe el artículo o servicio: estado, características, condiciones de venta…" maxlength="500"></textarea>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Foto (opcional)</label>
-      <div class="upload-zone" id="nc-upload-zone" onclick="$('nc-file-input').click()">
-        <input type="file" id="nc-file-input" accept="image/*" style="display:none" onchange="ncHandleFile(this)" />
-        <div id="nc-upload-preview">
-          <div class="upload-zone-icon">📷</div>
-          <p>Haz clic para subir una foto</p>
-          <small>JPG, PNG — máx. 5 MB</small>
+
+    <!-- MODO A: Aviso SINTRALCI -->
+    <div id="nc-form-sintralci">
+      <div class="form-group">
+        <label class="form-label">Categoría <span class="req">*</span></label>
+        <select id="nc-cat" class="form-control">
+          <option value="">— Selecciona —</option>
+          <option>Venta de artículos</option><option>Servicios</option>
+          <option>Se busca / Necesito</option><option>Arriendos / Vivienda</option>
+          <option>Donaciones / Regalos</option><option>Otros avisos</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Título <span class="req">*</span></label>
+        <input type="text" id="nc-titulo" class="form-control" placeholder="Ej: Vendo nevera LG 200L" maxlength="80" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Precio (opcional)</label>
+        <input type="text" id="nc-precio" class="form-control" placeholder="Ej: $150.000 · Gratis · Negociable" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción <span class="req">*</span></label>
+        <textarea id="nc-desc" class="form-control" placeholder="Describe el artículo o servicio…" maxlength="500"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Foto del artículo (opcional)</label>
+        <div class="upload-zone" onclick="$('nc-file-input').click()">
+          <input type="file" id="nc-file-input" accept="image/*" style="display:none" onchange="ncHandleFile(this)" />
+          <div id="nc-upload-preview">
+            <div class="upload-zone-icon">📷</div>
+            <p>Haz clic para subir una foto</p>
+            <small>JPG, PNG — máx. 5 MB</small>
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- MODO B: Flyer propio -->
+    <div id="nc-form-flyer" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Categoría <span class="req">*</span></label>
+        <select id="nc-cat-flyer" class="form-control">
+          <option value="">— Selecciona —</option>
+          <option>Venta de artículos</option><option>Servicios</option>
+          <option>Se busca / Necesito</option><option>Arriendos / Vivienda</option>
+          <option>Donaciones / Regalos</option><option>Otros avisos</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tu flyer <span class="req">*</span></label>
+        <div class="upload-zone" onclick="$('nc-file-flyer').click()" style="min-height:180px;">
+          <input type="file" id="nc-file-flyer" accept="image/*" style="display:none" onchange="ncHandleFile(this)" />
+          <div id="nc-flyer-preview">
+            <div class="upload-zone-icon" style="font-size:2.5rem;">🖼️</div>
+            <p>Sube la imagen de tu flyer</p>
+            <small>JPG, PNG — máx. 5 MB</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="nc-err" class="form-error-msg"></div>`,
     `<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
      <button class="btn btn-primary" id="nc-btn" onclick="submitClasificado()">Publicar</button>`
   );
 }
 
+function ncSetMode(mode) {
+  _ncMode = mode;
+  _ncImgBase64 = null; _ncImgMime = null;
+  $('nc-form-sintralci').style.display = mode === 'sintralci' ? '' : 'none';
+  $('nc-form-flyer').style.display     = mode === 'flyer'     ? '' : 'none';
+  document.querySelectorAll('.nc-mode-btn').forEach(b => b.classList.remove('active'));
+  $('ncbtn-' + mode).classList.add('active');
+}
+
 function ncHandleFile(input) {
   const file = input.files[0];
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) {
-    toast('La imagen supera los 5 MB. Elige una más pequeña.', 'error');
-    return;
-  }
+  if (file.size > 5 * 1024 * 1024) { toast('La imagen supera los 5 MB.', 'error'); return; }
   const reader = new FileReader();
   reader.onload = e => {
     const dataUrl = e.target.result;
-    const parts   = dataUrl.split(',');
-    _ncImgBase64  = parts[1];
-    _ncImgMime    = file.type;
-    $('nc-upload-preview').innerHTML = `
-      <img src="${dataUrl}" style="max-height:140px;border-radius:8px;object-fit:cover;width:100%;" />
-      <p style="margin-top:.5rem;font-size:.75rem;color:var(--muted);">${file.name} · ${(file.size/1024).toFixed(0)} KB
-        <span onclick="_ncImgBase64=null;_ncImgMime=null;$('nc-upload-preview').innerHTML='<div class=upload-zone-icon>📷</div><p>Haz clic para subir una foto</p>';$('nc-file-input').value='';"
+    _ncImgBase64 = dataUrl.split(',')[1];
+    _ncImgMime   = file.type;
+    const previewId = _ncMode === 'flyer' ? 'nc-flyer-preview' : 'nc-upload-preview';
+    const icon      = _ncMode === 'flyer' ? '🖼️' : '📷';
+    const inputId   = _ncMode === 'flyer' ? 'nc-file-flyer' : 'nc-file-input';
+    $(previewId).innerHTML = `
+      <img src="${dataUrl}" style="max-height:180px;border-radius:8px;object-fit:contain;width:100%;" />
+      <p style="margin-top:.4rem;font-size:.72rem;color:var(--muted);">${file.name}
+        <span onclick="_ncImgBase64=null;_ncImgMime=null;$('${previewId}').innerHTML='<div class=upload-zone-icon>${icon}</div><p>Sube la imagen</p>';$('${inputId}').value='';"
               style="color:var(--red);cursor:pointer;margin-left:.5rem;">✕ Quitar</span>
       </p>`;
   };
@@ -882,20 +971,25 @@ function ncHandleFile(input) {
 }
 
 async function submitClasificado() {
-  const cat   = $('nc-cat').value;
-  const titulo= $('nc-titulo').value.trim();
-  const desc  = $('nc-desc').value.trim();
-  const precio= $('nc-precio').value.trim();
-  const err   = $('nc-err');
-  const btn   = $('nc-btn');
+  const err = $('nc-err');
+  const btn = $('nc-btn');
+  err.classList.remove('show');
 
-  if (!cat || !titulo || !desc) { err.textContent='Completa los campos obligatorios.'; err.classList.add('show'); return; }
+  const esFlyer = _ncMode === 'flyer';
+  const cat     = esFlyer ? $('nc-cat-flyer').value : $('nc-cat').value;
+  const titulo  = esFlyer ? (cat || 'Flyer') : $('nc-titulo').value.trim();
+  const desc    = esFlyer ? '' : $('nc-desc').value.trim();
+  const precio  = esFlyer ? '' : $('nc-precio').value.trim();
+
+  if (!cat) { err.textContent='Selecciona una categoría.'; err.classList.add('show'); return; }
+  if (!esFlyer && (!titulo || !desc)) { err.textContent='Completa los campos obligatorios.'; err.classList.add('show'); return; }
+  if (esFlyer && !_ncImgBase64) { err.textContent='Sube la imagen de tu flyer.'; err.classList.add('show'); return; }
 
   btn.disabled=true; btn.innerHTML='<span class="spin"></span> Enviando…';
 
-  const payload = { categoria:cat, titulo, descripcion:desc, precio };
+  const payload = { categoria:cat, titulo, descripcion:desc, precio, tipo_aviso: _ncMode };
   if (_ncImgBase64) {
-    payload.imageBase64  = _ncImgBase64;
+    payload.imageBase64   = _ncImgBase64;
     payload.imageMimeType = _ncImgMime;
   }
 
@@ -1027,13 +1121,8 @@ async function viewNoticias() {
   const res = await api('getNoticias');
   const list = res.noticias || [];
 
-  const html = list.length ? list.map(n => `
-    <div class="news-card">
-      <div class="news-date">📅 ${fmtDate(n.fecha)} · ${esc(n.autor)}</div>
-      <div class="news-title">${esc(n.titulo)}</div>
-      <div class="news-content" style="white-space:pre-wrap;">${esc(n.contenido)}</div>
-    </div>
-  `).join('') : `<div class="empty"><div class="empty-icon">📭</div><p>No hay comunicados publicados aún.</p></div>`;
+  const html = list.length ? list.map(noticiaFlyer).join('')
+    : `<div class="empty"><div class="empty-icon">📭</div><p>No hay comunicados publicados aún.</p></div>`;
 
   $('view-area').innerHTML = `
     <div class="page-head">
@@ -1042,8 +1131,30 @@ async function viewNoticias() {
         <p>Información oficial de la junta directiva</p>
       </div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:.875rem;">${html}</div>
+    <div style="display:flex;flex-direction:column;gap:1.25rem;">${html}</div>
   `;
+}
+
+/* ── NOTICIA FLYER — estilo brand SINTRALCI ────────────── */
+function noticiaFlyer(n, adminActions = '') {
+  return `
+    <div class="noticia-flyer">
+      <div class="noticia-flyer-header">
+        <div class="noticia-flyer-brand">
+          ${logoMini(24)}
+          <div>
+            <div class="noticia-flyer-label">Comunicado Oficial</div>
+            <div class="noticia-flyer-date">${fmtDate(n.fecha)}</div>
+          </div>
+        </div>
+        ${adminActions}
+      </div>
+      <div class="noticia-flyer-body">
+        <div class="noticia-flyer-title">${esc(n.titulo)}</div>
+        <div class="noticia-flyer-content">${esc(n.contenido).replace(/\n/g,'<br>')}</div>
+        <div class="noticia-flyer-author">— ${esc(n.autor)}</div>
+      </div>
+    </div>`;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1292,29 +1403,15 @@ function renderAdminCLList() {
     return;
   }
 
-  cont.innerHTML = `<div style="display:flex;flex-direction:column;gap:.75rem;">${list.map(c => {
-    const catIcon = { 'Venta de artículos':'🛍️', 'Servicios':'🔧', 'Se busca / Necesito':'🔍', 'Arriendos / Vivienda':'🏠' }[c.categoria] || '📢';
-    return `
-    <div class="cl-card">
-      <div class="cl-img">${catIcon}</div>
-      <div class="cl-body">
-        <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;">
-          <span class="badge badge-muted">${esc(c.categoria)}</span>
-          <span class="badge ${estadoBadgeClass(c.estado)}">${estadoLabel(c.estado)}</span>
-        </div>
-        <div class="cl-title">${esc(c.titulo)}</div>
-        <div class="cl-desc">${esc(c.descripcion)}</div>
-        ${c.precio ? `<div class="cl-price">${esc(c.precio)}</div>` : ''}
-        <div class="cl-meta">
-          <span>👤 ${esc(c.nombre_afiliado)}</span>
-          <span>📅 ${fmtDate(c.fecha)}</span>
-        </div>
-        <div class="cl-actions">
-          ${c.estado !== 'aprobado'  ? `<button class="btn btn-success btn-sm" onclick="cambiarEstadoCL('${c.id}','aprobado')">✅ Aprobar</button>` : ''}
-          ${c.estado !== 'rechazado' ? `<button class="btn btn-danger btn-sm"  onclick="cambiarEstadoCL('${c.id}','rechazado')">✕ Rechazar</button>` : ''}
-          ${c.estado !== 'pendiente' ? `<button class="btn btn-secondary btn-sm" onclick="cambiarEstadoCL('${c.id}','pendiente')">↩ Pendiente</button>` : ''}
-        </div>
-      </div>
+  cont.innerHTML = `<div class="flyer-grid">${list.map(c => {
+    const adminBtns = `<div class="flyer-admin-btns">
+      ${c.estado !== 'aprobado'  ? `<button class="btn btn-success btn-sm" onclick="cambiarEstadoCL('${c.id}','aprobado')">✅ Aprobar</button>` : ''}
+      ${c.estado !== 'rechazado' ? `<button class="btn btn-danger btn-sm"  onclick="cambiarEstadoCL('${c.id}','rechazado')">✕ Rechazar</button>` : ''}
+      ${c.estado !== 'pendiente' ? `<button class="btn btn-secondary btn-sm" onclick="cambiarEstadoCL('${c.id}','pendiente')">↩ Pendiente</button>` : ''}
+    </div>`;
+    return `<div style="display:flex;flex-direction:column;gap:.5rem;">
+      ${clCard(c, true)}
+      ${adminBtns}
     </div>`;
   }).join('')}</div>`;
 }
@@ -1470,27 +1567,23 @@ async function viewAdminNoticias() {
   const list = res.noticias || [];
   S._adminNoticias = list;
 
-  const html = list.length ? list.map(n => `
-    <div class="news-card">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem;">
-        <div class="news-date">📅 ${fmtDate(n.fecha)}</div>
-        <span class="badge ${n.visible?'badge-grn':'badge-muted'}">${n.visible?'Publicado':'Borrador'}</span>
-      </div>
-      <div class="news-title">${esc(n.titulo)}</div>
-      <div class="news-content">${esc(n.contenido).replace(/\n/g,'<br>').substring(0,200)}${n.contenido.length>200?'…':''}</div>
-      <div style="display:flex;gap:.4rem;margin-top:.75rem;flex-wrap:wrap;">
-        <button class="btn btn-secondary btn-sm" onclick="editarNoticia('${esc(n.id)}')">✏️ Editar</button>
-        <button class="btn btn-danger btn-sm" onclick="borrarNoticia('${esc(n.id)}')">🗑️ Borrar</button>
-      </div>
+  const html = list.length ? list.map(n => noticiaFlyer(n, `
+    <div style="display:flex;gap:.4rem;align-items:center;">
+      <span class="badge ${n.visible?'badge-grn':'badge-muted'}" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);">
+        ${n.visible?'Publicado':'Borrador'}
+      </span>
+      <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:none;" onclick="editarNoticia('${esc(n.id)}')">✏️ Editar</button>
+      <button class="btn btn-sm" style="background:rgba(0,0,0,.15);color:#fff;border:none;" onclick="borrarNoticia('${esc(n.id)}')">🗑️</button>
     </div>
-  `).join('') : `<div class="empty"><div class="empty-icon">✏️</div><p>No hay comunicados publicados aún.</p></div>`;
+  `)).join('')
+  : `<div class="empty"><div class="empty-icon">✏️</div><p>No hay comunicados publicados aún.</p></div>`;
 
   $('view-area').innerHTML = `
     <div class="page-head">
       <div class="page-head-left"><h2>Comunicados</h2><p>Publica noticias y avisos para todos los afiliados</p></div>
       <div class="page-head-right"><button class="btn btn-primary" onclick="openNuevaNoticia()">+ Nuevo comunicado</button></div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:.875rem;">${html}</div>
+    <div style="display:flex;flex-direction:column;gap:1.25rem;">${html}</div>
   `;
 }
 
