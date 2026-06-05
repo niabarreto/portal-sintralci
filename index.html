@@ -4,7 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Portal SINTRALCI</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='119.83 182.51 356.04 356.04'%3E%3Ccircle cx='297.85' cy='360.53' r='178.02' fill='%23e94e1b'/%3E%3Ccircle cx='297.85' cy='360.53' r='142.87' fill='%23e94e1b'/%3E%3Cpath fill='%23fff' d='M357.04,295.13l6.31-.53,2.72,32.55-30.33,2.54-1.14-13.58s-.9-10.04,5.43-15.35c6.33-5.31,17-5.63,17-5.63Z'/%3E%3Cpath fill='%23fff' d='M317.14,298.37l6.31-.53,2.72,32.55-30.33,2.54-1.14-13.58s-.9-10.04,5.43-15.35c6.33-5.31,17-5.63,17-5.63Z'/%3E%3Cpath fill='%23fff' d='M288.47,362.29l-4.92-60.16-6.31.53s-10.67.32-17,5.63c-6.33,5.31-5.43,15.35-5.43,15.35l3.24,36.3c-.05.5-.07,1-.07,1.51.03,8.33,6.81,15.06,15.14,15.04,8-.03,14.51-6.29,14.99-14.16l.36-.03Z'/%3E%3Cpath fill='%23fff' d='M371.7,384.34l-.67-8.04-.02-.21-.06-.66-3.22-38.44-72.16,6.04c-.17,1.25-.05,2.65.35,4.19,4.56,10.21,20.94,20.39,43.25,21.62l.73,8.95-1.5.08-1.53.08s-5.28-.26-6.97-.49c-4.05-.57-8.2-1.41-12.22-2.62-6.45-1.94-12.56-4.82-17.34-9.06-1.68-1.49-3.19-3.15-4.5-4.99-.29,2.19-.9,5.13-2.2,8.14-1.09,2.5-2.65,5.05-4.9,7.24-2.18,2.12-4.34,3.64-6.31,4.74-4.83,2.7-8.51,2.87-8.51,2.87l-14.04,1.33-11.64.97c-21.55,1.5-27.65-1.8-27.65-1.8l.18,2.76.84,9.09s1.39,7.75,2.26,10.66c10.22,34.27,42.63,54.01,78.21,51.12,36.38-2.96,65.97-23.85,69.33-63.65.27-3.18.35-6.49.27-9.91Z'/%3E%3C/svg%3E" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+<meta name="theme-color" content="#e94e1b" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
@@ -1030,6 +1034,9 @@ tbody tr:hover td { background: var(--or-dim); }
   box-shadow: var(--sh);
   transition: transform .2s, box-shadow .2s;
   background: var(--white);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
 }
 .flyer-card:hover { transform: translateY(-4px); box-shadow: var(--sh-lg); }
 
@@ -1060,6 +1067,7 @@ tbody tr:hover td { background: var(--or-dim); }
   max-width: 120px;
 }
 .flyer-photo {
+  position: relative;
   width: 100%;
   aspect-ratio: 16/9;
   overflow: hidden;
@@ -1071,7 +1079,29 @@ tbody tr:hover td { background: var(--or-dim); }
 }
 .flyer-body {
   padding: 1.125rem 1.25rem 1.25rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
+
+/* Marcador de imagen que no carga (placeholder amable) */
+.flyer-img-fallback {
+  display: none;
+  position: absolute;
+  inset: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  font-size: 1.8rem;
+  color: var(--muted);
+  background: var(--bg);
+}
+.flyer-img-fallback span { font-size: .72rem; font-weight: 600; }
+.flyer-photo.img-fail img,
+.flyer-card.img-fail .flyer-user-photo img { display: none; }
+.flyer-photo.img-fail .flyer-img-fallback,
+.flyer-card.img-fail .flyer-img-fallback { display: flex; }
 .flyer-title {
   font-family: var(--fh);
   font-size: 1.15rem;
@@ -1086,6 +1116,10 @@ tbody tr:hover td { background: var(--or-dim); }
   color: var(--mid);
   line-height: 1.55;
   margin-bottom: .625rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .flyer-price {
   font-family: var(--fh);
@@ -1104,7 +1138,7 @@ tbody tr:hover td { background: var(--or-dim); }
   color: var(--muted);
   padding-top: .625rem;
   border-top: 1px solid var(--border-lt);
-  margin-top: .5rem;
+  margin-top: auto;
 }
 .flyer-status {
   font-size: .65rem;
@@ -1123,17 +1157,83 @@ tbody tr:hover td { background: var(--or-dim); }
 
 /* ── Flyer propio del afiliado */
 .flyer-user { display: flex; flex-direction: column; }
-.flyer-user-img {
+.flyer-user-photo {
+  position: relative;
   width: 100%;
+  aspect-ratio: 4/5;
+  overflow: hidden;
+  background: var(--bg);
+}
+.flyer-user-photo img {
+  width: 100%; height: 100%;
+  object-fit: cover;
   display: block;
-  object-fit: contain;
-  background: #f0ece6;
-  min-height: 200px;
-  max-height: 420px;
 }
 .flyer-user-footer {
   padding: .75rem 1rem;
   border-top: 1px solid var(--border-lt);
+}
+
+/* ── Detalle del clasificado (modal) */
+.cl-detalle { display: flex; flex-direction: column; gap: 1rem; }
+.cl-d-photo {
+  width: 100%;
+  max-height: 55vh;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--bg);
+  text-align: center;
+}
+.cl-d-photo img {
+  max-width: 100%;
+  max-height: 55vh;
+  object-fit: contain;
+  display: inline-block;
+}
+.cl-d-info { display: flex; flex-direction: column; gap: .5rem; }
+.cl-d-title {
+  font-family: var(--fh);
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: var(--txt);
+  line-height: 1.2;
+  margin: .15rem 0 0;
+}
+.cl-d-price {
+  font-family: var(--fh);
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: var(--grn);
+}
+.cl-d-desc {
+  font-size: .92rem;
+  color: var(--mid);
+  line-height: 1.6;
+  white-space: normal;
+}
+.cl-d-meta {
+  font-size: .78rem;
+  color: var(--muted);
+  padding-top: .5rem;
+  border-top: 1px solid var(--border-lt);
+}
+.cl-d-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  align-self: flex-start;
+  margin-top: .25rem;
+  padding: .55rem 1rem;
+  background: var(--or);
+  color: #fff;
+  font-weight: 700;
+  font-size: .85rem;
+  border-radius: var(--r-sm);
+  text-decoration: none;
+}
+.cl-d-contact:hover { background: var(--or-dk); }
+@media (min-width: 640px) {
+  .cl-d-photo img { max-height: 50vh; }
 }
 
 /* ── Selector de modo en el modal */

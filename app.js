@@ -66,6 +66,23 @@ function fmtDate(d) {
   return dt.toLocaleDateString('es-CO', { day:'2-digit', month:'short', year:'numeric' });
 }
 
+/* Normaliza CUALQUIER URL de Google Drive al formato que sí se puede
+   incrustar hoy (thumbnail). El formato antiguo uc?export=view dejó de
+   funcionar, por eso las fotos no se veían. Esto arregla las viejas y las
+   nuevas. URLs que no son de Drive se devuelven intactas. */
+function driveImg(url, size = 1200) {
+  if (!url) return '';
+  const u = String(url);
+  let id = '';
+  let m;
+  if ((m = u.match(/\/file\/d\/([-\w]{20,})/)))      id = m[1];   // .../file/d/ID/view
+  else if ((m = u.match(/[?&]id=([-\w]{20,})/)))     id = m[1];   // ...?id=ID  /  uc?export=view&id=ID
+  else if ((m = u.match(/\/d\/([-\w]{20,})/)))       id = m[1];   // lh3.../d/ID
+  else if ((m = u.match(/googleusercontent\.com\/([-\w]{20,})/))) id = m[1];
+  if (!id) return u;
+  return `https://drive.google.com/thumbnail?id=${id}&sz=w${size}`;
+}
+
 function initials(nombre, apellido) {
   const n = (nombre || '')[0] || '';
   const a = (apellido || '')[0] || '';
@@ -726,6 +743,7 @@ async function cambiarPassword() {
 
 /* ── CLASIFICADOS ──────────────────────────────────────── */
 let _clTabActual = 'tablero';
+let _clActual    = [];   // última lista cargada (para abrir el detalle)
 
 async function viewClasificados() {
   setPageTitle('Clasificados');
@@ -764,20 +782,50 @@ async function loadClasificados() {
   if (_clTabActual === 'tablero') {
     const res = await api('getClasificados');
     const list = res.clasificados || [];
+    _clActual = list;
     if (!list.length) {
       cont.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><p>No hay clasificados aprobados aún.</p></div>`;
       return;
     }
-    cont.innerHTML = `<div class="flyer-grid">${list.map(clCard).join('')}</div>`;
+    cont.innerHTML = `<div class="flyer-grid">${list.map(c => clCard(c)).join('')}</div>`;
   } else {
     const res = await api('getMisClasificados');
     const list = res.clasificados || [];
+    _clActual = list;
     if (!list.length) {
       cont.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><p>Aún no has publicado clasificados.</p><button class="btn btn-primary mt-2" onclick="openNuevoClasificado()">+ Publicar ahora</button></div>`;
       return;
     }
     cont.innerHTML = `<div class="flyer-grid">${list.map(c => clCard(c, true)).join('')}</div>`;
   }
+}
+
+/* Abre el detalle completo de un clasificado (foto sin recortar + texto completo). */
+function openClasificadoDetalle(id) {
+  const c = _clActual.find(x => x.id === id);
+  if (!c) return;
+  const CAT_COLOR = {
+    'Venta de artículos':'#e94e1b','Servicios':'#2563eb','Se busca / Necesito':'#16a34a',
+    'Arriendos / Vivienda':'#7c3aed','Donaciones / Regalos':'#d97706','Otros avisos':'#475569',
+  };
+  const color = CAT_COLOR[c.categoria] || '#e94e1b';
+  const img   = driveImg(c.url_imagen, 1600);
+  const correo = c.email_afiliado
+    ? `<a class="cl-d-contact" href="mailto:${esc(c.email_afiliado)}?subject=${encodeURIComponent('Clasificado SINTRALCI: '+(c.titulo||c.categoria))}">✉️ Escribir a ${esc(c.nombre_afiliado||'el autor')}</a>`
+    : '';
+  const body = `
+    <div class="cl-detalle">
+      ${img ? `<div class="cl-d-photo"><img src="${esc(img)}" alt="${esc(c.titulo||'foto')}" loading="lazy" /></div>` : ''}
+      <div class="cl-d-info">
+        <span class="flyer-cat-pill" style="background:${color}">${esc(c.categoria)}</span>
+        ${c.titulo ? `<h2 class="cl-d-title">${esc(c.titulo)}</h2>` : ''}
+        ${c.precio ? `<div class="cl-d-price">${esc(c.precio)}</div>` : ''}
+        ${c.descripcion ? `<p class="cl-d-desc">${esc(c.descripcion).replace(/\n/g,'<br>')}</p>` : ''}
+        <div class="cl-d-meta">👤 ${esc(c.nombre_afiliado)} · ${fmtDate(c.fecha)}</div>
+        ${correo}
+      </div>
+    </div>`;
+  openModal('Clasificado', body);
 }
 
 /* ── LOGO MINI (reutilizable) ──────────────────────────── */
@@ -787,6 +835,12 @@ function logoMini(size=22) {
     <path fill="#fff" d="M357.04,295.13l6.31-.53,2.72,32.55-30.33,2.54-1.14-13.58s-.9-10.04,5.43-15.35c6.33-5.31,17-5.63,17-5.63Z"/>
     <path fill="#fff" d="M317.14,298.37l6.31-.53,2.72,32.55-30.33,2.54-1.14-13.58s-.9-10.04,5.43-15.35c6.33-5.31,17-5.63,17-5.63Z"/>
     <path fill="#fff" d="M288.47,362.29l-4.92-60.16-6.31.53s-10.67.32-17,5.63c-6.33,5.31-5.43,15.35-5.43,15.35l3.24,36.3c-.05.5-.07,1-.07,1.51.03,8.33,6.81,15.06,15.14,15.04,8-.03,14.51-6.29,14.99-14.16l.36-.03Z"/>
+    <path fill="#fff" d="M426.17,345.47c-.61-7.76-3.76-13.18-11.63-12.56-.02,0-.05,0-.07,0v-.02s-9.14.76-9.14.76l.28,3.3,1.8,21.52.28,3.31,9.14-.76v-.03c7.83-.65,9.96-7.78,9.35-15.52Z"/>
+    <polygon fill="#fff" points="398.39 334.32 375.27 336.15 376.06 346.74 399.29 344.84 398.39 334.32"/>
+    <polygon fill="#fff" points="399.43 351.64 376.31 353.47 377.1 364.05 400.33 362.16 399.43 351.64"/>
+    <path fill="#fff" d="M192.26,362.63l17.97-1.57c.12-.01.21-.11.21-.23l-.93-10.56c0-.13-.12-.23-.25-.22l-11.17.89s0,.04,0,.05c.3,4.83-2.11,9.49-5.95,11.21-.24.11-.15.44.11.42Z"/>
+    <path fill="#fff" d="M181.37,357.78l-11.57,6.52c-.66.36-1.06,1.61-.95,2.97l.04.52c.12,1.36.72,2.43,1.43,2.51l12.33,3.52-1.28-16.04Z"/>
+    <path fill="#fff" d="M192.61,368.72l17.98-1.42c.12,0,.23.07.25.19l.78,10.68c.02.13-.08.25-.21.26l-11.17.9s0-.04,0-.05c-.48-4.82-3.6-9.03-7.66-10.11-.25-.07-.22-.41.04-.43Z"/>
     <path fill="#fff" d="M371.7,384.34l-.67-8.04-.02-.21-.06-.66-3.22-38.44-72.16,6.04c-.17,1.25-.05,2.65.35,4.19,4.56,10.21,20.94,20.39,43.25,21.62l.73,8.95-1.5.08-1.53.08s-5.28-.26-6.97-.49c-4.05-.57-8.2-1.41-12.22-2.62-6.45-1.94-12.56-4.82-17.34-9.06-1.68-1.49-3.19-3.15-4.5-4.99-.29,2.19-.9,5.13-2.2,8.14-1.09,2.5-2.65,5.05-4.9,7.24-2.18,2.12-4.34,3.64-6.31,4.74-4.83,2.7-8.51,2.87-8.51,2.87l-14.04,1.33-11.64.97c-21.55,1.5-27.65-1.8-27.65-1.8l.18,2.76.84,9.09s1.39,7.75,2.26,10.66c10.22,34.27,42.63,54.01,78.21,51.12,36.38-2.96,65.97-23.85,69.33-63.65.27-3.18.35-6.49.27-9.91Z"/>
     <path fill="#fff" d="M248.34,361.95l-3.72-45.45-6.31.53s-10.67.32-17,5.63c-6.33,5.31-5.43,15.35-5.43,15.35l2.34,26.22s.01,0,.02,0c.82,8.23,8.12,14.28,16.38,13.53,8.1-.74,14.1-7.75,13.68-15.8.01,0,.03,0,.04,0Z"/>
   </svg>`;
@@ -804,13 +858,18 @@ function clCard(c, showStatus = false) {
   };
   const color = CAT_COLOR[c.categoria] || '#e94e1b';
   const statusBadge = showStatus ? `<span class="flyer-status ${estadoBadgeClass(c.estado)}">${estadoLabel(c.estado)}</span>` : '';
+  const img = driveImg(c.url_imagen, 1000);
+  const onclick = `onclick="openClasificadoDetalle('${esc(c.id)}')"`;
 
   // ── Flyer propio del afiliado (imagen que sube él)
   if (c.tipo_aviso === 'flyer' && c.url_imagen) {
     return `
-      <div class="flyer-card flyer-user">
-        <img src="${esc(c.url_imagen)}" alt="${esc(c.titulo||c.categoria)}" class="flyer-user-img"
-             onerror="this.style.display='none'" />
+      <div class="flyer-card flyer-user" ${onclick}>
+        <div class="flyer-user-photo">
+          <img src="${esc(img)}" alt="${esc(c.titulo||c.categoria)}" loading="lazy"
+               onerror="this.closest('.flyer-card').classList.add('img-fail')" />
+          <div class="flyer-img-fallback">🖼️<span>No se pudo cargar la imagen</span></div>
+        </div>
         <div class="flyer-user-footer">
           <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
             <span class="flyer-cat-pill" style="background:${color}">${esc(c.categoria)}</span>
@@ -825,7 +884,7 @@ function clCard(c, showStatus = false) {
 
   // ── Aviso generado con diseño SINTRALCI
   return `
-    <div class="flyer-card flyer-sintralci">
+    <div class="flyer-card flyer-sintralci" ${onclick}>
       <div class="flyer-header" style="background:${color}">
         <div class="flyer-header-brand">
           ${logoMini(20)}
@@ -838,11 +897,13 @@ function clCard(c, showStatus = false) {
       </div>
       ${c.url_imagen ? `
         <div class="flyer-photo">
-          <img src="${esc(c.url_imagen)}" alt="foto" onerror="this.parentElement.style.display='none'" />
+          <img src="${esc(img)}" alt="foto" loading="lazy"
+               onerror="this.closest('.flyer-photo').classList.add('img-fail')" />
+          <div class="flyer-img-fallback">🖼️<span>No se pudo cargar la imagen</span></div>
         </div>` : ''}
       <div class="flyer-body">
         <div class="flyer-title">${esc(c.titulo)}</div>
-        ${c.descripcion ? `<div class="flyer-desc">${esc(c.descripcion).substring(0,200)}${c.descripcion.length>200?'…':''}</div>` : ''}
+        ${c.descripcion ? `<div class="flyer-desc">${esc(c.descripcion)}</div>` : ''}
         ${c.precio ? `<div class="flyer-price">${esc(c.precio)}</div>` : ''}
         <div class="flyer-meta">
           <span>👤 ${esc(c.nombre_afiliado)}</span>
@@ -1674,7 +1735,7 @@ function generarPrint(list) {
 
 function halfCard(c) {
   return `<div class="print-half">
-    ${c.url_imagen ? `<div class="pc-img"><img src="${esc(c.url_imagen)}" /></div>` : ''}
+    ${c.url_imagen ? `<div class="pc-img"><img src="${esc(driveImg(c.url_imagen, 1200))}" /></div>` : ''}
     <div class="pc-body">
       <div class="pc-brand"><div class="pc-orange-circle"><span>S</span></div><span class="pc-brand-text">SINTRALCI</span></div>
       <div class="pc-category">${esc(c.categoria)}</div>

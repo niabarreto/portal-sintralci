@@ -726,7 +726,10 @@ function _rowToNoticia(row) {
   };
 }
 
-/** Sube imagen base64 a Drive y devuelve URL directa. */
+/** Sube imagen base64 a Drive y devuelve URL incrustable.
+ *  Usa el endpoint /thumbnail, que es el que hoy sí funciona dentro de
+ *  etiquetas <img>. El antiguo uc?export=view dejó de servir (Google
+ *  redirige a una pantalla de advertencia) y por eso las fotos no se veían. */
 function _subirImagen(base64, mimeType) {
   try {
     const decoded = Utilities.base64Decode(base64);
@@ -734,7 +737,7 @@ function _subirImagen(base64, mimeType) {
     const folder  = DriveApp.getFolderById(FOLDER_ID);
     const file    = folder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    return 'https://drive.google.com/uc?export=view&id=' + file.getId();
+    return 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w1200';
   } catch (e) {
     console.warn('Error subiendo imagen: ' + e.message);
     return '';
