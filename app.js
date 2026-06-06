@@ -1614,6 +1614,7 @@ async function cambiarEstadoCL(id, estado) {
 function imprimirAprobados() {
   const aprobados = (S._adminCL||[]).filter(c=>c.estado==='aprobado');
   if (!aprobados.length) { toast('No hay clasificados aprobados para imprimir.', 'info'); return; }
+  toast('Preparando impresión… (cargando imágenes)', 'info');
   generarPrint(aprobados);
 }
 
@@ -1870,17 +1871,31 @@ const PRINT_CAT_COLOR = {
   'Arriendos / Vivienda':'#7c3aed','Donaciones / Regalos':'#d97706','Otros avisos':'#475569',
 };
 
-function generarPrint(list) {
+async function generarPrint(list) {
+  const area = $('print-area');
   let html = '';
-  // Un cartel por aviso · 2 por hoja (media carta), con línea de corte
-  for (let i = 0; i < list.length; i += 2) {
-    html += `<div class="print-sheet">`;
-    html += posterCard(list[i]);
-    if (list[i+1]) { html += `<div class="cut-line">✂ CORTAR ✂</div>`; html += posterCard(list[i+1]); }
-    html += `</div>`;
-  }
-  $('print-area').innerHTML = html;
+  // Un cartel por aviso; cada uno crece con su contenido y no se parte entre páginas.
+  list.forEach((c, i) => {
+    html += posterCard(c);
+    if (i < list.length - 1) html += `<div class="cut-line">✂ CORTAR ✂</div>`;
+  });
+  area.innerHTML = html;
+  // Esperar a que las imágenes de Drive carguen ANTES de imprimir (si no, salen en blanco)
+  await _preloadImgs(area);
   window.print();
+}
+
+function _preloadImgs(area) {
+  const imgs = Array.from(area.querySelectorAll('img'));
+  if (!imgs.length) return Promise.resolve();
+  return Promise.all(imgs.map(im =>
+    (im.complete && im.naturalWidth)
+      ? null
+      : new Promise(res => {
+          im.onload = im.onerror = res;
+          setTimeout(res, 6000);   // tope por si una imagen no responde
+        })
+  ));
 }
 
 /* Cartel adaptativo: solo imagen / imagen+texto / solo texto. */

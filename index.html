@@ -1479,64 +1479,58 @@ tbody tr:hover td { background: var(--or-dim); }
 
 #print-area { display: none; }
 @media print {
-  @page { size: letter; margin: 0; }
+  @page { size: letter; margin: 10mm; }
   body > *:not(#print-area) { display: none !important; }
   #print-area { display: block !important; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 
-  .print-sheet { width: 216mm; background: #fff; page-break-after: always; margin: 0 auto; padding: 6mm 0; }
-  .cut-line { height: 8mm; display: flex; align-items: center; justify-content: center; font-size: 7pt; color: #bbb; font-family: sans-serif; letter-spacing: 3px; }
+  .cut-line { padding: 4mm 0; display: flex; align-items: center; justify-content: center; font-size: 7pt; color: #bbb; font-family: sans-serif; letter-spacing: 3px; }
 
-  /* ── Cartel base ── */
+  /* ── Cartel base: crece con su contenido, no se parte entre páginas ── */
   .poster {
     position: relative;
-    width: 200mm;
-    height: 128mm;
+    width: 100%;
     margin: 0 auto;
     background: #fff;
     border: 1pt solid #e3ded7;
     border-radius: 4mm;
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    page-break-inside: avoid;
+    break-inside: avoid;
     font-family: 'Kumbh Sans', sans-serif;
   }
   /* Encabezado de marca + categoría */
   .pc-head {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 4mm 7mm; color: #fff; flex: none;
+    padding: 4mm 7mm; color: #fff;
   }
   .pc-brand { display: flex; align-items: center; gap: 2.5mm; font-weight: 900; font-size: 13pt; letter-spacing: .5px; }
   .pc-brand svg { width: 7mm; height: 7mm; }
   .pc-cat { font-size: 10pt; font-weight: 700; opacity: .95; text-align: right; max-width: 90mm; }
 
-  /* Foto */
-  .pc-photo { flex: 1; overflow: hidden; background: #f3efe9; display: flex; align-items: center; justify-content: center; }
-  .pc-photo img { width: 100%; height: 100%; object-fit: contain; }
-  .poster-mixto .pc-photo-sm { flex: none; height: 50mm; }
-  .poster-mixto .pc-photo-sm img { object-fit: cover; }
+  /* Foto — altura natural con tope, sin recortar el diseño */
+  .pc-photo { width: 100%; background: #f3efe9; text-align: center; font-size: 0; }
+  .pc-photo img { width: 100%; max-height: 150mm; object-fit: contain; display: block; }
+  .poster-mixto .pc-photo img { max-height: 90mm; }
 
-  /* Cuerpo de texto */
-  .pc-body { padding: 6mm 8mm; flex: 1; display: flex; flex-direction: column; gap: 2mm; overflow: hidden; }
-  .pc-body-big { justify-content: center; padding: 8mm; }
-  .pc-title { font-size: 19pt; font-weight: 900; color: #1a1818; line-height: 1.12; }
-  .pc-title-lg { font-size: 30pt; }
-  .pc-price { font-size: 17pt; font-weight: 900; }
-  .pc-desc {
-    font-size: 11pt; color: #4a4a4a; line-height: 1.5;
-    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden;
-  }
-  .pc-body-big .pc-desc { font-size: 13pt; -webkit-line-clamp: 9; }
+  /* Cuerpo de texto — completo, sin recortes */
+  .pc-body { padding: 6mm 8mm; }
+  .pc-body-big { padding: 9mm 8mm; }
+  .pc-title { font-size: 19pt; font-weight: 900; color: #1a1818; line-height: 1.15; margin-bottom: 2mm; }
+  .pc-title-lg { font-size: 27pt; }
+  .pc-price { font-size: 16pt; font-weight: 900; margin-bottom: 3mm; }
+  .pc-desc { font-size: 11.5pt; color: #3a3a3a; line-height: 1.5; white-space: pre-line; }
+  .pc-body-big .pc-desc { font-size: 13pt; }
 
   /* Contacto */
-  .pc-contact { flex: none; padding: 4.5mm 8mm; border-top: 1.5pt solid #eee; background: #faf7f3; }
+  .pc-contact { padding: 4.5mm 8mm; border-top: 1.5pt solid #eee; background: #faf7f3; }
   .pc-c-name { font-size: 11pt; font-weight: 800; color: #1a1818; }
   .pc-c-row { display: flex; gap: 8mm; flex-wrap: wrap; margin-top: 1.5mm; font-size: 11pt; color: #2a2a2a; }
   .pc-c-item { font-weight: 600; }
   .pc-c-note { font-size: 9pt; color: #999; font-style: italic; margin-top: 1mm; }
 
   /* Marca de agua (solo texto) */
-  .pc-watermark { position: absolute; right: -18mm; bottom: 6mm; width: 95mm; height: 95mm; pointer-events: none; z-index: 0; }
+  .pc-watermark { position: absolute; right: -18mm; bottom: -6mm; width: 80mm; height: 80mm; pointer-events: none; z-index: 0; }
   .poster-texto .pc-head, .poster-texto .pc-body, .poster-texto .pc-contact { position: relative; z-index: 1; }
 }
 
