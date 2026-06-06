@@ -1479,30 +1479,65 @@ tbody tr:hover td { background: var(--or-dim); }
 
 #print-area { display: none; }
 @media print {
+  @page { size: letter; margin: 0; }
   body > *:not(#print-area) { display: none !important; }
   #print-area { display: block !important; }
-  .print-sheet { width: 216mm; background: #fff; page-break-after: always; margin: 0 auto; }
-  .print-half { height: 138mm; display: flex; overflow: hidden; border: 1px solid #ccc; }
-  .print-quarter-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: 279mm; }
-  .print-quarter { border: 1px solid #ccc; padding: 7mm; overflow: hidden; display: flex; flex-direction: column; }
-  .cut-line { height: 10px; display: flex; align-items: center; justify-content: center; font-size: 7pt; color: #aaa; font-family: sans-serif; letter-spacing: 2px; border-top: 1px dashed #aaa; }
-  .pc-orange-circle { width: 7mm; height: 7mm; border-radius: 50%; background: #e94e1b; display: flex; align-items: center; justify-content: center; }
-  .pc-orange-circle span { color: #fff; font-size: 5pt; font-weight: 700; font-family: sans-serif; }
-  .pc-brand { display: flex; align-items: center; gap: 2mm; margin-bottom: 3mm; }
-  .pc-brand-text { font-size: 6pt; color: #e94e1b; font-weight: 700; font-family: sans-serif; }
-  .pc-category { background: #e94e1b; color: #fff; padding: 1mm 3mm; border-radius: 3mm; font-size: 7pt; font-weight: 700; font-family: sans-serif; display: inline-block; margin-bottom: 2mm; }
-  .pc-title { font-size: 14pt; font-weight: 800; color: #1a1818; font-family: sans-serif; line-height: 1.2; margin-bottom: 2mm; }
-  .pc-title-sm { font-size: 10pt; }
-  .pc-price { font-size: 13pt; font-weight: 800; color: #16a34a; font-family: sans-serif; margin-bottom: 2mm; }
-  .pc-desc { font-size: 8pt; color: #555; line-height: 1.4; font-family: sans-serif; flex: 1; overflow: hidden; }
-  .pc-contact { margin-top: auto; padding-top: 2mm; border-top: 1pt solid #eee; font-family: sans-serif; }
-  .pc-contact-label { font-size: 7pt; color: #888; }
-  .pc-contact-name  { font-size: 8pt; font-weight: 700; color: #1a1818; }
-  .pc-contact-phone { font-size: 8pt; color: #444; }
-  .pc-date { font-size: 6pt; color: #aaa; margin-top: 1mm; }
-  .pc-img { width: 85mm; background: #f5f5f5; overflow: hidden; flex-shrink: 0; }
-  .pc-img img { width: 100%; height: 100%; object-fit: cover; }
-  .pc-body { padding: 8mm; flex: 1; display: flex; flex-direction: column; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  .print-sheet { width: 216mm; background: #fff; page-break-after: always; margin: 0 auto; padding: 6mm 0; }
+  .cut-line { height: 8mm; display: flex; align-items: center; justify-content: center; font-size: 7pt; color: #bbb; font-family: sans-serif; letter-spacing: 3px; }
+
+  /* ── Cartel base ── */
+  .poster {
+    position: relative;
+    width: 200mm;
+    height: 128mm;
+    margin: 0 auto;
+    background: #fff;
+    border: 1pt solid #e3ded7;
+    border-radius: 4mm;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Kumbh Sans', sans-serif;
+  }
+  /* Encabezado de marca + categoría */
+  .pc-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4mm 7mm; color: #fff; flex: none;
+  }
+  .pc-brand { display: flex; align-items: center; gap: 2.5mm; font-weight: 900; font-size: 13pt; letter-spacing: .5px; }
+  .pc-brand svg { width: 7mm; height: 7mm; }
+  .pc-cat { font-size: 10pt; font-weight: 700; opacity: .95; text-align: right; max-width: 90mm; }
+
+  /* Foto */
+  .pc-photo { flex: 1; overflow: hidden; background: #f3efe9; display: flex; align-items: center; justify-content: center; }
+  .pc-photo img { width: 100%; height: 100%; object-fit: contain; }
+  .poster-mixto .pc-photo-sm { flex: none; height: 50mm; }
+  .poster-mixto .pc-photo-sm img { object-fit: cover; }
+
+  /* Cuerpo de texto */
+  .pc-body { padding: 6mm 8mm; flex: 1; display: flex; flex-direction: column; gap: 2mm; overflow: hidden; }
+  .pc-body-big { justify-content: center; padding: 8mm; }
+  .pc-title { font-size: 19pt; font-weight: 900; color: #1a1818; line-height: 1.12; }
+  .pc-title-lg { font-size: 30pt; }
+  .pc-price { font-size: 17pt; font-weight: 900; }
+  .pc-desc {
+    font-size: 11pt; color: #4a4a4a; line-height: 1.5;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden;
+  }
+  .pc-body-big .pc-desc { font-size: 13pt; -webkit-line-clamp: 9; }
+
+  /* Contacto */
+  .pc-contact { flex: none; padding: 4.5mm 8mm; border-top: 1.5pt solid #eee; background: #faf7f3; }
+  .pc-c-name { font-size: 11pt; font-weight: 800; color: #1a1818; }
+  .pc-c-row { display: flex; gap: 8mm; flex-wrap: wrap; margin-top: 1.5mm; font-size: 11pt; color: #2a2a2a; }
+  .pc-c-item { font-weight: 600; }
+  .pc-c-note { font-size: 9pt; color: #999; font-style: italic; margin-top: 1mm; }
+
+  /* Marca de agua (solo texto) */
+  .pc-watermark { position: absolute; right: -18mm; bottom: 6mm; width: 95mm; height: 95mm; pointer-events: none; z-index: 0; }
+  .poster-texto .pc-head, .poster-texto .pc-body, .poster-texto .pc-contact { position: relative; z-index: 1; }
 }
 
 /* ══════════════════════════════════════════════════════════

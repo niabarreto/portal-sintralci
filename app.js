@@ -1865,63 +1865,102 @@ async function borrarNoticia(id) {
 }
 
 /* ── IMPRIMIR CLASIFICADOS ─────────────────────────────── */
-function generarPrint(list) {
-  const withImg    = list.filter(c => c.url_imagen);
-  const withoutImg = list.filter(c => !c.url_imagen);
-  let html = '';
+const PRINT_CAT_COLOR = {
+  'Venta de artículos':'#e94e1b','Servicios':'#2563eb','Se busca / Necesito':'#16a34a',
+  'Arriendos / Vivienda':'#7c3aed','Donaciones / Regalos':'#d97706','Otros avisos':'#475569',
+};
 
-  // Con imagen: 2 por hoja (media carta c/u)
-  for (let i=0; i<withImg.length; i+=2) {
+function generarPrint(list) {
+  let html = '';
+  // Un cartel por aviso · 2 por hoja (media carta), con línea de corte
+  for (let i = 0; i < list.length; i += 2) {
     html += `<div class="print-sheet">`;
-    html += halfCard(withImg[i]);
-    if (withImg[i+1]) { html += `<div class="cut-line">✂ CORTAR ✂</div>`; html += halfCard(withImg[i+1]); }
+    html += posterCard(list[i]);
+    if (list[i+1]) { html += `<div class="cut-line">✂ CORTAR ✂</div>`; html += posterCard(list[i+1]); }
     html += `</div>`;
   }
-
-  // Sin imagen: 4 por hoja (cuarto de carta c/u)
-  for (let i=0; i<withoutImg.length; i+=4) {
-    html += `<div class="print-sheet"><div class="print-quarter-grid">`;
-    for (let j=0; j<4; j++) {
-      html += withoutImg[i+j] ? quarterCard(withoutImg[i+j]) : `<div class="print-quarter"></div>`;
-    }
-    html += `</div></div>`;
-  }
-
   $('print-area').innerHTML = html;
   window.print();
 }
 
-function halfCard(c) {
-  return `<div class="print-half">
-    ${c.url_imagen ? `<div class="pc-img"><img src="${esc(driveImg(c.url_imagen, 1200))}" /></div>` : ''}
-    <div class="pc-body">
-      <div class="pc-brand"><div class="pc-orange-circle"><span>S</span></div><span class="pc-brand-text">SINTRALCI</span></div>
-      <div class="pc-category">${esc(c.categoria)}</div>
-      <div class="pc-title">${esc(c.titulo)}</div>
-      ${c.precio ? `<div class="pc-price">${esc(c.precio)}</div>` : ''}
-      <div class="pc-desc">${esc(c.descripcion)}</div>
-      <div class="pc-contact">
-        <div class="pc-contact-label">Contacto</div>
-        <div class="pc-contact-name">${esc(c.nombre_afiliado)}</div>
-        <div class="pc-date">Publicado: ${fmtDate(c.fecha)}</div>
-      </div>
+/* Cartel adaptativo: solo imagen / imagen+texto / solo texto. */
+function posterCard(c) {
+  const cat   = (c.categoria || '').trim();
+  const color = PRINT_CAT_COLOR[cat] || '#e94e1b';
+  const hasImg   = !!c.url_imagen;
+  const titulo   = (c.titulo || '').trim();
+  const tituloReal = titulo && titulo !== cat ? titulo : '';
+  const hasTexto = !!(c.descripcion && c.descripcion.trim()) || !!tituloReal || !!(c.precio && c.precio.trim());
+  const tipo = !hasImg ? 'texto' : (hasTexto ? 'mixto' : 'imagen');
+  const img  = hasImg ? driveImg(c.url_imagen, 1400) : '';
+
+  const head = `
+    <div class="pc-head" style="background:${color}">
+      <div class="pc-brand">${logoMini(26)}<span>SINTRALCI</span></div>
+      <span class="pc-cat">${esc(cat)}</span>
+    </div>`;
+
+  const ct = c.contacto || {};
+  const items = [];
+  if (ct.telefono) items.push(`<span class="pc-c-item">📱 ${esc(ct.telefono)}</span>`);
+  if (ct.correo)   items.push(`<span class="pc-c-item">✉️ ${esc(ct.correo)}</span>`);
+  const contacto = `
+    <div class="pc-contact">
+      <div class="pc-c-name">${esc(c.nombre_afiliado)}</div>
+      ${items.length
+        ? `<div class="pc-c-row">${items.join('')}</div>`
+        : `<div class="pc-c-note">Contáctalo a través del portal SINTRALCI</div>`}
+    </div>`;
+
+  const titHtml = tituloReal ? `<div class="pc-title">${esc(tituloReal)}</div>` : '';
+  const precio  = c.precio ? `<div class="pc-price" style="color:${color}">${esc(c.precio)}</div>` : '';
+  const desc    = c.descripcion ? `<div class="pc-desc">${esc(c.descripcion).replace(/\n/g,'<br>')}</div>` : '';
+
+  if (tipo === 'imagen') {
+    return `<div class="poster poster-imagen">
+      ${head}
+      <div class="pc-photo"><img src="${esc(img)}" /></div>
+      ${contacto}
+    </div>`;
+  }
+  if (tipo === 'mixto') {
+    return `<div class="poster poster-mixto">
+      ${head}
+      <div class="pc-photo pc-photo-sm"><img src="${esc(img)}" /></div>
+      <div class="pc-body">${titHtml}${precio}${desc}</div>
+      ${contacto}
+    </div>`;
+  }
+  // solo texto — cartel tipográfico con marca de agua
+  return `<div class="poster poster-texto">
+    ${head}
+    <div class="pc-watermark">${printWatermark()}</div>
+    <div class="pc-body pc-body-big">
+      ${titHtml ? `<div class="pc-title pc-title-lg">${esc(tituloReal)}</div>` : `<div class="pc-title pc-title-lg">${esc(cat)}</div>`}
+      ${precio}
+      ${desc}
     </div>
+    ${contacto}
   </div>`;
 }
 
-function quarterCard(c) {
-  return `<div class="print-quarter">
-    <div class="pc-brand"><div class="pc-orange-circle"><span>S</span></div><span class="pc-brand-text">SINTRALCI</span></div>
-    <div class="pc-category">${esc(c.categoria)}</div>
-    <div class="pc-title pc-title-sm">${esc(c.titulo)}</div>
-    ${c.precio ? `<div class="pc-price" style="font-size:11pt;">${esc(c.precio)}</div>` : ''}
-    <div class="pc-desc">${esc(c.descripcion)}</div>
-    <div class="pc-contact">
-      <div class="pc-contact-label">Contacto</div>
-      <div class="pc-contact-name">${esc(c.nombre_afiliado)}</div>
-      <div class="pc-date">${fmtDate(c.fecha)}</div>
-    </div>
-  </div>`;
+/* Puño grande y tenue para la marca de agua del cartel de solo texto. */
+function printWatermark() {
+  return `<svg viewBox="155 218 286 286" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+    <g fill="rgba(233,78,27,.07)">
+      <path d="M357.04,295.13l6.31-.53,2.72,32.55-30.33,2.54-1.14-13.58s-.9-10.04,5.43-15.35c6.33-5.31,17-5.63,17-5.63Z"/>
+      <path d="M317.14,298.37l6.31-.53,2.72,32.55-30.33,2.54-1.14-13.58s-.9-10.04,5.43-15.35c6.33-5.31,17-5.63,17-5.63Z"/>
+      <path d="M288.47,362.29l-4.92-60.16-6.31.53s-10.67.32-17,5.63c-6.33,5.31-5.43,15.35-5.43,15.35l3.24,36.3c-.05.5-.07,1-.07,1.51.03,8.33,6.81,15.06,15.14,15.04,8-.03,14.51-6.29,14.99-14.16l.36-.03Z"/>
+      <path d="M426.17,345.47c-.61-7.76-3.76-13.18-11.63-12.56-.02,0-.05,0-.07,0v-.02s-9.14.76-9.14.76l.28,3.3,1.8,21.52.28,3.31,9.14-.76v-.03c7.83-.65,9.96-7.78,9.35-15.52Z"/>
+      <polygon points="398.39 334.32 375.27 336.15 376.06 346.74 399.29 344.84 398.39 334.32"/>
+      <polygon points="399.43 351.64 376.31 353.47 377.1 364.05 400.33 362.16 399.43 351.64"/>
+      <path d="M192.26,362.63l17.97-1.57c.12-.01.21-.11.21-.23l-.93-10.56c0-.13-.12-.23-.25-.22l-11.17.89s0,.04,0,.05c.3,4.83-2.11,9.49-5.95,11.21-.24.11-.15.44.11.42Z"/>
+      <path d="M181.37,357.78l-11.57,6.52c-.66.36-1.06,1.61-.95,2.97l.04.52c.12,1.36.72,2.43,1.43,2.51l12.33,3.52-1.28-16.04Z"/>
+      <path d="M192.61,368.72l17.98-1.42c.12,0,.23.07.25.19l.78,10.68c.02.13-.08.25-.21.26l-11.17.9s0-.04,0-.05c-.48-4.82-3.6-9.03-7.66-10.11-.25-.07-.22-.41.04-.43Z"/>
+      <path d="M371.7,384.34l-.67-8.04-.02-.21-.06-.66-3.22-38.44-72.16,6.04c-.17,1.25-.05,2.65.35,4.19,4.56,10.21,20.94,20.39,43.25,21.62l.73,8.95-1.5.08-1.53.08s-5.28-.26-6.97-.49c-4.05-.57-8.2-1.41-12.22-2.62-6.45-1.94-12.56-4.82-17.34-9.06-1.68-1.49-3.19-3.15-4.5-4.99-.29,2.19-.9,5.13-2.2,8.14-1.09,2.5-2.65,5.05-4.9,7.24-2.18,2.12-4.34,3.64-6.31,4.74-4.83,2.7-8.51,2.87-8.51,2.87l-14.04,1.33-11.64.97c-21.55,1.5-27.65-1.8-27.65-1.8l.18,2.76.84,9.09s1.39,7.75,2.26,10.66c10.22,34.27,42.63,54.01,78.21,51.12,36.38-2.96,65.97-23.85,69.33-63.65.27-3.18.35-6.49.27-9.91Z"/>
+      <path d="M248.34,361.95l-3.72-45.45-6.31.53s-10.67.32-17,5.63c-6.33,5.31-5.43,15.35-5.43,15.35l2.34,26.22s.01,0,.02,0c.82,8.23,8.12,14.28,16.38,13.53,8.1-.74,14.1-7.75,13.68-15.8.01,0,.03,0,.04,0Z"/>
+    </g>
+  </svg>`;
 }
 
 /* ── HELPERS DE ESTADO ─────────────────────────────────── */
