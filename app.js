@@ -89,6 +89,51 @@ function initials(nombre, apellido) {
   return (n + a).toUpperCase() || '?';
 }
 
+/* Iniciales a partir de un nombre completo en texto ("Nia Barreto" → "NB"). */
+function strInitials(s) {
+  const p = (s || '').trim().split(/\s+/);
+  return ((p[0]?.[0] || '') + (p[1]?.[0] || '')).toUpperCase() || '?';
+}
+
+/* Avatar circular: muestra la foto si existe, si no las iniciales.
+   Si la foto falla al cargar, cae a las iniciales sin dejar hueco. */
+function avatarBox(fotoUrl, fallback, size = 40) {
+  const f = fotoUrl ? driveImg(fotoUrl, 300) : '';
+  const inner = f
+    ? `<img src="${esc(f)}" alt="" onerror="this.replaceWith(document.createTextNode('${esc(fallback)}'))" />`
+    : esc(fallback);
+  return `<div class="user-avatar" style="width:${size}px;height:${size}px;font-size:${Math.round(size*0.38)}px;flex:none;">${inner}</div>`;
+}
+
+/* Lee un archivo de imagen y entrega base64 + mime + dataUrl. */
+function readImg(input, onReady) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('La imagen supera los 5 MB.', 'error'); return; }
+  const r = new FileReader();
+  r.onload = e => {
+    const d = e.target.result;
+    onReady({ base64: d.split(',')[1], mime: file.type, dataUrl: d, name: file.name });
+  };
+  r.readAsDataURL(file);
+}
+
+/* Copia texto al portapapeles con aviso. */
+function copiar(texto) {
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(texto).then(
+      () => toast('Copiado: ' + texto, 'success'),
+      () => toast('No se pudo copiar.', 'error')
+    );
+  } else {
+    const t = document.createElement('textarea');
+    t.value = texto; document.body.appendChild(t); t.select();
+    try { document.execCommand('copy'); toast('Copiado: ' + texto, 'success'); }
+    catch (e) { toast('No se pudo copiar.', 'error'); }
+    t.remove();
+  }
+}
+
 function uuid() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = Math.random()*16|0;
@@ -171,8 +216,8 @@ async function demoApi(action, data) {
   }
   if (action === 'changePassword') {
     const u = d.users.find(u => u.id === S.user.id);
-    if (!u || u.password !== data.currentPwd) return { success: false, message: 'La contraseña actual es incorrecta.' };
-    u.password = data.newPwd;
+    if (!u || u.password !== data.currentPassword) return { success: false, message: 'La contraseña actual es incorrecta.' };
+    u.password = data.newPassword;
     return { success: true };
   }
 
@@ -318,7 +363,7 @@ async function demoApi(action, data) {
     if (S.user.rol !== 'junta') return { success: false, message: 'No autorizado.' };
     const u = d.users.find(u => u.id === data.id);
     if (!u) return { success: false, message: 'No encontrado.' };
-    u.password = data.newPwd;
+    u.password = data.newPassword;
     return { success: true };
   }
 
@@ -404,13 +449,12 @@ function renderSidebar() {
 
   // Brand
   $('sidebar-brand').innerHTML = `
-    <svg width="42" height="42" viewBox="119.83 182.51 356.04 356.04" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="297.85" cy="360.53" r="178.02" fill="rgba(0,0,0,.12)"/>
-      <circle cx="297.85" cy="360.53" r="142.87" fill="rgba(0,0,0,.15)"/>
+    <svg width="42" height="42" viewBox="155 218 286 286" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="297.85" cy="360.53" r="142.87" fill="rgba(0,0,0,.16)"/>
       <path fill="#fff" d="M357.04,295.13l6.31-.53,2.72,32.55-30.33,2.54-1.14-13.58s-.9-10.04,5.43-15.35c6.33-5.31,17-5.63,17-5.63Z"/>
       <path fill="#fff" d="M317.14,298.37l6.31-.53,2.72,32.55-30.33,2.54-1.14-13.58s-.9-10.04,5.43-15.35c6.33-5.31,17-5.63,17-5.63Z"/>
       <path fill="#fff" d="M288.47,362.29l-4.92-60.16-6.31.53s-10.67.32-17,5.63c-6.33,5.31-5.43,15.35-5.43,15.35l3.24,36.3c-.05.5-.07,1-.07,1.51.03,8.33,6.81,15.06,15.14,15.04,8-.03,14.51-6.29,14.99-14.16l.36-.03Z"/>
-      <path fill="#fff" d="M426.17,345.47c-.61-7.76-3.76-13.18-11.63-12.56v-.02s-9.14.76-9.14.76l.28,3.3,1.8,21.52.28,3.31,9.14-.76v-.03c7.83-.65,9.96-7.78,9.35-15.52Z"/>
+      <path fill="#fff" d="M426.17,345.47c-.61-7.76-3.76-13.18-11.63-12.56-.02,0-.05,0-.07,0v-.02s-9.14.76-9.14.76l.28,3.3,1.8,21.52.28,3.31,9.14-.76v-.03c7.83-.65,9.96-7.78,9.35-15.52Z"/>
       <polygon fill="#fff" points="398.39 334.32 375.27 336.15 376.06 346.74 399.29 344.84 398.39 334.32"/>
       <polygon fill="#fff" points="399.43 351.64 376.31 353.47 377.1 364.05 400.33 362.16 399.43 351.64"/>
       <path fill="#fff" d="M192.26,362.63l17.97-1.57c.12-.01.21-.11.21-.23l-.93-10.56c0-.13-.12-.23-.25-.22l-11.17.89s0,.04,0,.05c.3,4.83-2.11,9.49-5.95,11.21-.24.11-.15.44.11.42Z"/>
@@ -418,11 +462,6 @@ function renderSidebar() {
       <path fill="#fff" d="M192.61,368.72l17.98-1.42c.12,0,.23.07.25.19l.78,10.68c.02.13-.08.25-.21.26l-11.17.9s0-.04,0-.05c-.48-4.82-3.6-9.03-7.66-10.11-.25-.07-.22-.41.04-.43Z"/>
       <path fill="#fff" d="M371.7,384.34l-.67-8.04-.02-.21-.06-.66-3.22-38.44-72.16,6.04c-.17,1.25-.05,2.65.35,4.19,4.56,10.21,20.94,20.39,43.25,21.62l.73,8.95-1.5.08-1.53.08s-5.28-.26-6.97-.49c-4.05-.57-8.2-1.41-12.22-2.62-6.45-1.94-12.56-4.82-17.34-9.06-1.68-1.49-3.19-3.15-4.5-4.99-.29,2.19-.9,5.13-2.2,8.14-1.09,2.5-2.65,5.05-4.9,7.24-2.18,2.12-4.34,3.64-6.31,4.74-4.83,2.7-8.51,2.87-8.51,2.87l-14.04,1.33-11.64.97c-21.55,1.5-27.65-1.8-27.65-1.8l.18,2.76.84,9.09s1.39,7.75,2.26,10.66c10.22,34.27,42.63,54.01,78.21,51.12,36.38-2.96,65.97-23.85,69.33-63.65.27-3.18.35-6.49.27-9.91Z"/>
       <path fill="#fff" d="M248.34,361.95l-3.72-45.45-6.31.53s-10.67.32-17,5.63c-6.33,5.31-5.43,15.35-5.43,15.35l2.34,26.22s.01,0,.02,0c.82,8.23,8.12,14.28,16.38,13.53,8.1-.74,14.1-7.75,13.68-15.8.01,0,.03,0,.04,0Z"/>
-      <!-- Texto circular -->
-      <path fill="#fff" d="M185.15,342.86l-1.88-1.32c.75-.76,1.39-1.93,1.61-3.07.23-1.16-.01-1.67-.49-1.77-1.57-.3-1.52,5.54-5.19,4.82-1.77-.34-2.93-2.06-2.35-5,.25-1.29.8-2.56,1.56-3.42l1.91,1.27c-.69.85-1.13,1.73-1.3,2.59-.23,1.17.08,1.67.58,1.77,1.51.29,1.47-5.53,5.12-4.82,1.72.34,2.91,2.06,2.34,5-.32,1.62-1.07,3.15-1.9,3.96Z"/><path fill="#fff" d="M178.64,329.45l.75-2.75,9.73,2.64-.75,2.75-9.73-2.64Z"/><path fill="#fff" d="M183.76,313.82l9.47,3.45-.8,2.2-6.57,2.34,5.05,1.84-.96,2.62-9.47-3.45.8-2.21,6.57-2.34-5.05-1.84.96-2.62Z"/><path fill="#fff" d="M222.66,269.26c-1.81-2.42-1.24-5.62,1.34-7.55,2.58-1.93,5.81-1.58,7.62.84,1.81,2.42,1.24,5.62-1.34,7.55-2.58,1.93-5.81,1.58-7.62-.84ZM229.32,264.28c-1.04-1.39-2.68-1.59-3.9-.68-1.22.91-1.5,2.54-.45,3.93,1.04,1.39,2.68,1.59,3.9.68,1.22-.91,1.5-2.54.45-3.93Z"/><path fill="#fff" d="M296.64,245.46l-4.26.12-.74,1.98-2.91.08,4.17-10.2,2.8-.08,4.74,9.95-2.96.08-.85-1.94ZM295.75,243.38l-1.38-3.19-1.2,3.26,2.59-.07Z"/><path fill="#fff" d="M360.57,260.25c1.72-2.48,4.94-2.95,7.59-1.11,2.65,1.84,3.33,5.01,1.61,7.5-1.72,2.48-4.94,2.95-7.59,1.11-2.65-1.84-3.34-5.01-1.61-7.5ZM367.41,265c.99-1.43.66-3.05-.59-3.92-1.25-.87-2.88-.62-3.87.81-.99,1.43-.66,3.05.59,3.92,1.26.87,2.88.62,3.88-.81Z"/><path fill="#fff" d="M413.06,316.93l.98,2.68-9.46,3.46-.98-2.68,9.46-3.46Z"/>
-      <path fill="#e94e1b" d="M292.14,514.39l-3.76-.1.07-2.78,10.97.3-.07,2.78-3.74-.1-.26,9.61-3.46-.09.26-9.61Z"/><path fill="#e94e1b" d="M324.05,515.79c-.83-4.01.93-6.77,3.99-7.41,3.05-.63,5.76,1.22,6.58,5.23.83,4.01-.92,6.77-3.98,7.4-3.07.63-5.77-1.22-6.6-5.22ZM331.22,514.32c-.53-2.55-1.51-3.34-2.59-3.12-1.1.23-1.69,1.34-1.16,3.89s1.51,3.34,2.61,3.11c1.08-.22,1.67-1.34,1.15-3.89Z"/>
-      <path fill="#fff" d="M196.65,410.53l-.2,3.36-3.22-.39.38-3.54-2.97,1.46-1.38-3.02,3.05-1.3-2.92-2.03,1.82-2.66,2.68,2.04.23-3.37,3.2.36-.4,3.55,3-1.47,1.38,3.02-3.07,1.31,2.95,2.02-1.81,2.69-2.7-2.03Z"/>
-      <path fill="#fff" d="M407.58,386.85l2.31-2.45,2.22,2.36-2.55,2.48,3.22.78-.87,3.2-3.17-.95.95,3.43-3.1.88-.75-3.28-2.33,2.45-2.23-2.33,2.58-2.47-3.24-.79.87-3.21,3.2.96-.98-3.43,3.11-.91.78,3.29Z"/>
     </svg>
     <div class="sb-brand-text">
       <strong>SINTRALCI</strong>
@@ -499,7 +538,7 @@ function navItem(n) {
 function renderSidebarUser() {
   const u = S.user;
   $('sidebar-user').innerHTML = `
-    <div class="user-avatar">${initials(u.nombre, u.apellido)}</div>
+    ${avatarBox(u.foto, initials(u.nombre, u.apellido), 40)}
     <div class="user-info">
       <strong>${esc(u.nombre)} ${esc(u.apellido)}</strong>
       <span>Afiliado #${esc(u.num_afiliado)} · ${u.rol === 'junta' ? 'Junta Directiva' : 'Afiliado'}</span>
@@ -635,10 +674,15 @@ async function viewPerfil() {
       <div class="card" style="margin-bottom:1rem;">
         <div class="card-body">
           <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border);">
-            <div class="user-avatar" style="width:60px;height:60px;font-size:1.4rem;">${initials(u.nombre,u.apellido)}</div>
+            <label class="avatar-edit" title="Cambiar foto de perfil">
+              <input type="file" accept="image/*" style="display:none" onchange="cambiarFotoPerfil(this)" />
+              <span id="perfil-avatar">${avatarBox(u.foto, initials(u.nombre,u.apellido), 72)}</span>
+              <span class="avatar-edit-badge">📷</span>
+            </label>
             <div>
               <div style="font-size:1.1rem;font-weight:800;">${esc(u.nombre)} ${esc(u.apellido)}</div>
               <div class="text-sm text-muted">${esc(u.cargo)} · ${u.rol === 'junta' ? '<span class="badge badge-or">Junta Directiva</span>' : '<span class="badge badge-muted">Afiliado</span>'}</div>
+              <div class="text-xs text-muted mt-1">Toca la foto para cambiarla</div>
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem 1.5rem;">
@@ -712,6 +756,24 @@ async function guardarPerfil() {
   btn.innerHTML = 'Guardar cambios';
 }
 
+function cambiarFotoPerfil(input) {
+  readImg(input, async img => {
+    const cont = $('perfil-avatar');
+    if (cont) cont.innerHTML = `<div class="user-avatar" style="width:72px;height:72px;flex:none;"><img src="${img.dataUrl}" alt="" /></div>`;
+    const res = await api('updateProfile', { imageBase64: img.base64, imageMimeType: img.mime });
+    if (res.success) {
+      S.user.foto = (res.user && res.user.foto) || S.user.foto;
+      try { localStorage.setItem(CFG.USER_KEY, JSON.stringify(S.user)); } catch (e) {}
+      toast('Foto de perfil actualizada.', 'success');
+      renderSidebarUser();
+    } else {
+      toast(res.message || 'No se pudo subir la foto.', 'error');
+    }
+    if (cont) cont.innerHTML = avatarBox(S.user.foto, initials(S.user.nombre, S.user.apellido), 72);
+    input.value = '';
+  });
+}
+
 async function cambiarPassword() {
   const current = $('pwd-current').value;
   const newPwd  = $('pwd-new').value;
@@ -727,7 +789,7 @@ async function cambiarPassword() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span>';
 
-  const res = await api('changePassword', { currentPwd: current, newPwd });
+  const res = await api('changePassword', { currentPassword: current, newPassword: newPwd });
   if (res.success) {
     toast('Contraseña cambiada correctamente.', 'success');
     $('pwd-current').value = '';
@@ -810,9 +872,14 @@ function openClasificadoDetalle(id) {
   };
   const color = CAT_COLOR[c.categoria] || '#e94e1b';
   const img   = driveImg(c.url_imagen, 1600);
-  const correo = c.email_afiliado
-    ? `<a class="cl-d-contact" href="mailto:${esc(c.email_afiliado)}?subject=${encodeURIComponent('Clasificado SINTRALCI: '+(c.titulo||c.categoria))}">✉️ Escribir a ${esc(c.nombre_afiliado||'el autor')}</a>`
-    : '';
+  const ct    = c.contacto || {};
+  const hayContacto = !!(ct.correo || ct.telefono);
+  const contactoBloque = hayContacto
+    ? `<div class="cl-contact-wrap">
+         <button class="cl-contact-reveal" type="button" onclick="revelarContacto('${esc(c.id)}', this)">📇 Ver datos de contacto</button>
+         <div class="cl-contact-box hidden" id="cl-contact-box"></div>
+       </div>`
+    : `<div class="cl-contact-none">Este afiliado no habilitó datos de contacto para este aviso.</div>`;
   const body = `
     <div class="cl-detalle">
       ${img ? `<div class="cl-d-photo"><img src="${esc(img)}" alt="${esc(c.titulo||'foto')}" loading="lazy" /></div>` : ''}
@@ -822,10 +889,48 @@ function openClasificadoDetalle(id) {
         ${c.precio ? `<div class="cl-d-price">${esc(c.precio)}</div>` : ''}
         ${c.descripcion ? `<p class="cl-d-desc">${esc(c.descripcion).replace(/\n/g,'<br>')}</p>` : ''}
         <div class="cl-d-meta">👤 ${esc(c.nombre_afiliado)} · ${fmtDate(c.fecha)}</div>
-        ${correo}
+        ${contactoBloque}
       </div>
     </div>`;
   openModal('Clasificado', body);
+}
+
+/* Enlace de WhatsApp normalizando el número (agrega indicativo 57 si es celular CO). */
+function waLink(phone, ref) {
+  let d = String(phone || '').replace(/\D/g, '');
+  if (d.length === 10 && d[0] === '3') d = '57' + d;
+  const txt = encodeURIComponent('Hola, vi tu clasificado "' + (ref || '') + '" en el portal SINTRALCI.');
+  return `https://wa.me/${d}?text=${txt}`;
+}
+
+/* Revela los datos de contacto que el afiliado habilitó para ese aviso. */
+function revelarContacto(id, btn) {
+  const c = _clActual.find(x => x.id === id);
+  if (!c) return;
+  const ct = c.contacto || {};
+  const asunto = encodeURIComponent('Clasificado SINTRALCI: ' + (c.titulo || c.categoria));
+  let html = '';
+  if (ct.correo) html += `
+    <div class="cl-contact-row">
+      <div class="cl-contact-row-head">✉️ Correo</div>
+      <a class="cl-contact-mail" href="mailto:${esc(ct.correo)}?subject=${asunto}">${esc(ct.correo)}</a>
+      <div class="cl-contact-actions">
+        <a class="cl-contact-btn primary" href="mailto:${esc(ct.correo)}?subject=${asunto}">Escribir</a>
+        <button class="cl-contact-btn" type="button" onclick="copiar('${esc(ct.correo)}')">Copiar</button>
+      </div>
+    </div>`;
+  if (ct.telefono) html += `
+    <div class="cl-contact-row">
+      <div class="cl-contact-row-head">📱 Teléfono</div>
+      <span class="cl-contact-mail">${esc(ct.telefono)}</span>
+      <div class="cl-contact-actions">
+        <a class="cl-contact-btn primary" href="${waLink(ct.telefono, c.titulo || c.categoria)}" target="_blank" rel="noopener">WhatsApp</a>
+        <button class="cl-contact-btn" type="button" onclick="copiar('${esc(ct.telefono)}')">Copiar</button>
+      </div>
+    </div>`;
+  const box = $('cl-contact-box');
+  if (box) { box.innerHTML = html; box.classList.remove('hidden'); }
+  if (btn) btn.style.display = 'none';
 }
 
 /* ── LOGO MINI (reutilizable) ──────────────────────────── */
@@ -994,6 +1099,14 @@ function openNuevoClasificado() {
       </div>
     </div>
 
+    <!-- Contacto: qué compartir en ESTE aviso -->
+    <div class="form-group nc-contacto">
+      <label class="form-label">¿Cómo pueden contactarte por este aviso?</label>
+      <label class="nc-check"><input type="checkbox" id="nc-ct-correo" checked /> <span>Mostrar mi correo</span></label>
+      <label class="nc-check"><input type="checkbox" id="nc-ct-tel" ${S.user && S.user.telefono ? '' : 'disabled'} /> <span>Mostrar mi teléfono / WhatsApp${S.user && S.user.telefono ? '' : ' — agrégalo primero en Mi Perfil'}</span></label>
+      <small class="text-muted">Si no marcas ninguna, tu aviso no mostrará botón de contacto.</small>
+    </div>
+
     <div id="nc-err" class="form-error-msg"></div>`,
     `<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
      <button class="btn btn-primary" id="nc-btn" onclick="submitClasificado()">Publicar</button>`
@@ -1048,7 +1161,11 @@ async function submitClasificado() {
 
   btn.disabled=true; btn.innerHTML='<span class="spin"></span> Enviando…';
 
-  const payload = { categoria:cat, titulo, descripcion:desc, precio, tipo_aviso: _ncMode };
+  const medios = [];
+  if ($('nc-ct-correo') && $('nc-ct-correo').checked) medios.push('correo');
+  if ($('nc-ct-tel')    && $('nc-ct-tel').checked)    medios.push('telefono');
+
+  const payload = { categoria:cat, titulo, descripcion:desc, precio, tipo_aviso: _ncMode, contacto_medios: medios.join(',') };
   if (_ncImgBase64) {
     payload.imageBase64   = _ncImgBase64;
     payload.imageMimeType = _ncImgMime;
@@ -1198,6 +1315,7 @@ async function viewNoticias() {
 
 /* ── NOTICIA FLYER — estilo brand SINTRALCI ────────────── */
 function noticiaFlyer(n, adminActions = '') {
+  const img = driveImg(n.url_imagen, 1200);
   return `
     <div class="noticia-flyer">
       <div class="noticia-flyer-header">
@@ -1210,10 +1328,14 @@ function noticiaFlyer(n, adminActions = '') {
         </div>
         ${adminActions}
       </div>
+      ${img ? `<div class="noticia-flyer-photo"><img src="${esc(img)}" alt="${esc(n.titulo)}" loading="lazy" onerror="this.closest('.noticia-flyer-photo').remove()" /></div>` : ''}
       <div class="noticia-flyer-body">
         <div class="noticia-flyer-title">${esc(n.titulo)}</div>
         <div class="noticia-flyer-content">${esc(n.contenido).replace(/\n/g,'<br>')}</div>
-        <div class="noticia-flyer-author">— ${esc(n.autor)}</div>
+        <div class="noticia-flyer-author">
+          ${avatarBox(n.autor_foto, strInitials(n.autor), 28)}
+          <span>${esc(n.autor)}</span>
+        </div>
       </div>
     </div>`;
 }
@@ -1387,7 +1509,7 @@ async function guardarAfiliado(id) {
 
   const newPwd = $('ea-pwd').value.trim();
   if (res.success && newPwd) {
-    await api('resetPassword', { id, newPwd });
+    await api('resetPassword', { id, newPassword: newPwd });
   }
 
   if (res.success) {
@@ -1648,8 +1770,12 @@ async function viewAdminNoticias() {
   `;
 }
 
+let _nnImg = null;   // imagen pendiente del comunicado en edición
+
 function openNuevaNoticia(id) {
+  _nnImg = null;
   const n = id ? (S._adminNoticias||[]).find(x=>x.id===id) : null;
+  const imgActual = n && n.url_imagen ? driveImg(n.url_imagen, 800) : '';
   openModal(n ? 'Editar Comunicado' : 'Nuevo Comunicado',
     `<div class="form-group">
       <label class="form-label">Título <span class="req">*</span></label>
@@ -1659,10 +1785,39 @@ function openNuevaNoticia(id) {
       <label class="form-label">Contenido <span class="req">*</span></label>
       <textarea id="nn-contenido" class="form-control" style="min-height:160px;">${esc(n?.contenido||'')}</textarea>
     </div>
+    <div class="form-group">
+      <label class="form-label">Imagen (opcional)</label>
+      <input type="file" id="nn-file" accept="image/*" style="display:none" onchange="nnHandleFile(this)" />
+      <div id="nn-img-preview" class="upload-zone" onclick="$('nn-file').click()">
+        ${imgActual
+          ? `<img src="${esc(imgActual)}" style="max-height:160px;border-radius:8px;object-fit:contain;width:100%;" /><p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">Toca para reemplazar la imagen</p>`
+          : `<div class="upload-zone-icon">🖼️</div><p>Subir una imagen</p>`}
+      </div>
+    </div>
     <div id="nn-err" class="form-error-msg"></div>`,
     `<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
      <button class="btn btn-primary" id="nn-btn" onclick="publicarNoticia(${JSON.stringify(id||null)})">${n?'Guardar cambios':'Publicar'}</button>`
   );
+}
+
+function nnHandleFile(input) {
+  readImg(input, img => {
+    _nnImg = img;
+    $('nn-img-preview').innerHTML =
+      `<img src="${img.dataUrl}" style="max-height:160px;border-radius:8px;object-fit:contain;width:100%;" />
+       <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">${esc(img.name)}
+         <span onclick="nnClearImg(event)" style="color:var(--red);cursor:pointer;margin-left:.5rem;">✕ Quitar</span>
+       </p>`;
+  });
+}
+
+function nnClearImg(ev) {
+  if (ev) ev.stopPropagation();
+  _nnImg = null;
+  const p = $('nn-img-preview');
+  if (p) p.innerHTML = `<div class="upload-zone-icon">🖼️</div><p>Subir una imagen</p>`;
+  const f = $('nn-file');
+  if (f) f.value = '';
 }
 
 function editarNoticia(id) { openNuevaNoticia(id); }
@@ -1677,11 +1832,14 @@ async function publicarNoticia(id) {
 
   btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
 
+  const payload = { titulo, contenido };
+  if (_nnImg) { payload.imageBase64 = _nnImg.base64; payload.imageMimeType = _nnImg.mime; }
+
   let res;
   if (id) {
-    res = await api('updateNoticia', { id, titulo, contenido });
+    res = await api('updateNoticia', { id, ...payload });
   } else {
-    res = await api('createNoticia', { titulo, contenido });
+    res = await api('createNoticia', payload);
   }
 
   if (res.success) {

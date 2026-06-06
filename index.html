@@ -394,6 +394,32 @@ body {
   font-size: .85rem;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+}
+.user-avatar img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+/* Avatar editable (Mi Perfil) */
+.avatar-edit {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+  flex: none;
+}
+.avatar-edit .user-avatar { background: var(--or); border-color: var(--or-dk); }
+.avatar-edit-badge {
+  position: absolute;
+  right: -2px; bottom: -2px;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--white);
+  border: 2px solid var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .8rem;
+  box-shadow: var(--sh-sm);
 }
 .user-info { flex: 1; min-width: 0; }
 .user-info strong {
@@ -1232,6 +1258,96 @@ tbody tr:hover td { background: var(--or-dim); }
   text-decoration: none;
 }
 .cl-d-contact:hover { background: var(--or-dk); }
+
+/* Tarjeta de contacto del autor */
+.cl-contact-card {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+  margin-top: .5rem;
+  padding: .85rem 1rem;
+  background: var(--or-lt);
+  border: 1px solid var(--or-glow);
+  border-radius: var(--r-sm);
+}
+.cl-contact-card .user-avatar { background: var(--or); border-color: var(--or-dk); }
+.cl-contact-info { flex: 1; min-width: 140px; }
+.cl-contact-name { font-weight: 700; font-size: .9rem; color: var(--txt); }
+.cl-contact-mail {
+  font-size: .82rem;
+  color: var(--or-dk);
+  text-decoration: none;
+  word-break: break-all;
+}
+.cl-contact-mail:hover { text-decoration: underline; }
+.cl-contact-actions { display: flex; gap: .5rem; }
+.cl-contact-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .5rem .85rem;
+  border-radius: var(--r-sm);
+  font-weight: 700;
+  font-size: .82rem;
+  cursor: pointer;
+  text-decoration: none;
+  border: 1px solid var(--border);
+  background: var(--white);
+  color: var(--txt);
+}
+.cl-contact-btn.primary { background: var(--or); color: #fff; border-color: var(--or-dk); }
+.cl-contact-btn.primary:hover { background: var(--or-dk); }
+.cl-contact-btn:hover { border-color: var(--or); }
+
+/* Botón "Ver datos de contacto" + caja revelada */
+.cl-contact-wrap { margin-top: .5rem; }
+.cl-contact-reveal {
+  display: inline-flex; align-items: center; gap: .45rem;
+  padding: .6rem 1.1rem;
+  background: var(--or); color: #fff;
+  border: none; border-radius: var(--r-sm);
+  font-family: var(--fh); font-weight: 700; font-size: .9rem;
+  cursor: pointer;
+}
+.cl-contact-reveal:hover { background: var(--or-dk); }
+.cl-contact-box {
+  margin-top: .6rem;
+  display: flex; flex-direction: column; gap: .6rem;
+}
+.cl-contact-row {
+  display: flex; flex-direction: column; gap: .35rem;
+  padding: .8rem 1rem;
+  background: var(--or-lt);
+  border: 1px solid var(--or-glow);
+  border-radius: var(--r-sm);
+}
+.cl-contact-row-head { font-weight: 700; font-size: .8rem; color: var(--txt); }
+.cl-contact-none {
+  margin-top: .5rem;
+  padding: .75rem 1rem;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-sm);
+  font-size: .82rem;
+  color: var(--muted);
+}
+/* Casillas de contacto en el formulario de nuevo aviso */
+.nc-contacto {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: .85rem 1rem;
+}
+.nc-check {
+  display: flex; align-items: center; gap: .5rem;
+  font-size: .88rem; color: var(--txt);
+  cursor: pointer; margin: .4rem 0;
+}
+.nc-check input { width: 17px; height: 17px; accent-color: var(--or); cursor: pointer; }
+.nc-check input:disabled { cursor: not-allowed; }
+.nc-check input:disabled + span { color: var(--muted); }
+
 @media (min-width: 640px) {
   .cl-d-photo img { max-height: 50vh; }
 }
@@ -1320,12 +1436,31 @@ tbody tr:hover td { background: var(--or-dim); }
   line-height: 1.7;
 }
 .noticia-flyer-author {
-  font-size: .78rem;
-  color: var(--muted);
-  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--mid);
   margin-top: 1rem;
   padding-top: .75rem;
   border-top: 1px solid var(--border-lt);
+}
+.noticia-flyer-author .user-avatar {
+  background: var(--or);
+  border-color: var(--or-dk);
+}
+.noticia-flyer-photo {
+  width: 100%;
+  max-height: 380px;
+  overflow: hidden;
+  background: var(--bg);
+}
+.noticia-flyer-photo img {
+  width: 100%;
+  max-height: 380px;
+  object-fit: cover;
+  display: block;
 }
 
 /* Botones de acción admin bajo cada flyer */
