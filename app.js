@@ -7,7 +7,7 @@
 const CFG = {
   // Pega aquí la URL de tu Google Apps Script desplegado.
   // Si está vacío, la app funciona en modo demo con datos de ejemplo.
-  SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyMZaPaLHJKKpyy6qexzRMi_EfGIwv6lHI-7c2FzmhfIWhMZwK39NulT09lR4wkDALZwA/exec',
+  SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbz7OcJhQasu8qhqFbM5tO7NJvUvvygC1UTPZ_sgB0Ir994hkPsOxZrRKx4Osi2i2qwQrw/exec',
   TOKEN_KEY:  'sintralci_token',
   USER_KEY:   'sintralci_user',
 };
@@ -761,11 +761,15 @@ function cambiarFotoPerfil(input) {
     const cont = $('perfil-avatar');
     if (cont) cont.innerHTML = `<div class="user-avatar" style="width:72px;height:72px;flex:none;"><img src="${img.dataUrl}" alt="" /></div>`;
     const res = await api('updateProfile', { imageBase64: img.base64, imageMimeType: img.mime });
-    if (res.success) {
-      S.user.foto = (res.user && res.user.foto) || S.user.foto;
+    if (res.success && res.user && res.user.foto) {
+      S.user.foto = res.user.foto;
       try { localStorage.setItem(CFG.USER_KEY, JSON.stringify(S.user)); } catch (e) {}
       toast('Foto de perfil actualizada.', 'success');
       renderSidebarUser();
+    } else if (res.success) {
+      // El backend respondió OK pero sin foto → casi siempre es que el backend
+      // desplegado está desactualizado (falta redesplegar como Nueva versión).
+      toast('La foto no se guardó. Revisa que el backend esté actualizado y redesplegado.', 'error');
     } else {
       toast(res.message || 'No se pudo subir la foto.', 'error');
     }
